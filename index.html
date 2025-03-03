@@ -1,625 +1,1082 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>明星養成遊戲</title>
+    <title>MERMAID 圖表設計工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+    <script>
+        // 備用 Mermaid 載入機制
+        window.addEventListener('DOMContentLoaded', function() {
+            if (typeof mermaid === 'undefined') {
+                console.warn("主要 CDN 載入失敗，嘗試從備用來源載入 Mermaid...");
+                var script = document.createElement('script');
+                script.src = "https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js";
+                script.onload = function() {
+                    console.log("Mermaid 從備用來源成功載入");
+                    if (window.mermaidInitialized) {
+                        mermaid.initialize({
+                            startOnLoad: false,
+                            theme: 'default',
+                            securityLevel: 'loose'
+                        });
+                    }
+                };
+                script.onerror = function() {
+                    console.error("所有 Mermaid 源均無法載入");
+                    alert("無法載入 Mermaid 庫，請檢查您的網絡連接或稍後再試。");
+                };
+                document.head.appendChild(script);
+            }
+        });
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
+            font-family: 'Microsoft JhengHei', '微軟正黑體', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
             padding: 20px;
-            background-color: #f0f0f0;
-        }
-        h1, h2 {
             color: #333;
+            line-height: 1.6;
         }
-        #game-container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        .container {
+            display: flex;
+            flex-direction: column;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .editor-container {
+            display: flex;
+            flex-direction: row;
+            margin-bottom: 20px;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .editor-container {
+                flex-direction: column;
+            }
+        }
+        .code-area, .preview-area {
+            flex: 1;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .code-area {
+            display: flex;
+            flex-direction: column;
+        }
+        textarea {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            resize: vertical;
+        }
+        .preview-area {
+            background-color: #f9f9f9;
+            min-height: 300px;
+            overflow: auto;
+        }
+        .diagram-container {
+            position: relative;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+        .button-group {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         button {
-            background-color: #4CAF50;
-            border: none;
+            padding: 8px 15px;
+            background-color: #4682B4;
             color: white;
-            padding: 10px 20px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 4px 2px;
+            border: none;
+            border-radius: 4px;
             cursor: pointer;
-            border-radius: 5px;
+            font-size: 14px;
         }
-        #status, #events, #achievements, #leaderboard {
-            margin-top: 20px;
+        button:hover {
+            background-color: #36648B;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
+        .examples {
+            margin-top: 30px;
         }
-        th, td {
+        .example-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+        }
+        .example-code {
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            margin: 10px 0;
+        }
+        .config-panel {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f0f8ff;
+            border-radius: 4px;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 15px;
+        }
+        .tab {
+            background-color: #f5f5f5;
             border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
+            border-bottom: none;
+            padding: 8px 15px;
+            cursor: pointer;
+            margin-right: 5px;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
         }
-        th {
-            background-color: #f2f2f2;
+        .tab.active {
+            background-color: #4682B4;
+            color: white;
+            border-color: #4682B4;
         }
-        #manager-dialog {
-            background-color: #e6f3ff;
-            border: 2px solid #b3d9ff;
-            border-radius: 10px;
-            padding: 10px;
-            margin-top: 20px;
-        }
-        #start-screen {
-            text-align: center;
-            margin-top: 50px;
-        }
-        #start-screen input {
-            padding: 10px;
-            font-size: 16px;
-            margin-bottom: 10px;
-        }
-        #career-options {
+        .tab-content {
             display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .config-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        .config-label {
+            min-width: 120px;
+            font-weight: bold;
+        }
+        select, input {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 180px;
+        }
+        .export-options {
+            background-color: #e6f2ff;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        .export-options h3 {
+            margin-top: 0;
+        }
+        .error-message {
+            background-color: #ffebee;
+            color: #d32f2f;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .info-message {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .line-highlight {
+            background-color: #ffcdd2;
         }
     </style>
 </head>
 <body>
-    <div id="start-screen">
-        <h1>歡迎來到明星養成遊戲</h1>
-        <input type="text" id="artist-name" placeholder="請輸入你的藝名">
-        <input type="date" id="artist-birthday" placeholder="請輸入你的生日(月/日)">
-        <button onclick="startGame()">開始遊戲</button>
-    </div>
-    <div id="game-container" style="display: none;">
-        <h1>明星養成遊戲</h1>
-        <div id="status">
-            <h2>狀態</h2>
-            <table id="status-table">
-                <tr>
-                    <th>藝名</th>
-                    <th>生日</th>
-                    <th>日期</th>
-                    <th>職業</th>
-                    <th>體力</th>
-                    <th>金錢</th>
-                    <th>人氣</th>
-                    <th>剩餘行動次數</th>
-                </tr>
-                <tr>
-                    <td id="player-name"></td>
-                    <td id="player-birthday"></td>
-                    <td id="date"></td>
-                    <td id="career"></td>
-                    <td id="energy"></td>
-                    <td id="money"></td>
-                    <td id="popularity"></td>
-                    <td id="actions-left"></td>
-                </tr>
-            </table>
-            <h3>技能</h3>
-            <table id="skills-table">
-                <tr>
-                    <th>唱歌</th>
-                    <th>跳舞</th>
-                    <th>演技</th>
-                    <th>綜藝</th>
-                    <th>主持</th>
-                </tr>
-                <tr>
-                    <td id="singing"></td>
-                    <td id="dancing"></td>
-                    <td id="acting"></td>
-                    <td id="variety"></td>
-                    <td id="hosting"></td>
-                </tr>
-            </table>
+    <div class="container">
+        <h1>MERMAID 圖表設計工具</h1>
+        <p>此工具可協助您使用 MERMAID 語法來繪製各種圖表，包括流程圖、序列圖、甘特圖等。</p>
+        
+        <div class="config-panel">
+            <h2>樣式與排列設定</h2>
+            
+            <div class="tabs">
+                <div class="tab active" data-tab="basic">基本設定</div>
+                <div class="tab" data-tab="flowchart">流程圖設定</div>
+                <div class="tab" data-tab="sequence">序列圖設定</div>
+                <div class="tab" data-tab="class">類別圖設定</div>
+                <div class="tab" data-tab="gantt">甘特圖設定</div>
+                <div class="tab" data-tab="state">狀態圖設定</div>
+            </div>
+            
+            <div class="tab-content active" id="basic-tab">
+                <div class="config-row">
+                    <div class="config-label">主題樣式：</div>
+                    <select id="theme-select">
+                        <option value="default">預設</option>
+                        <option value="forest">森林綠</option>
+                        <option value="dark">深色</option>
+                        <option value="neutral">中性</option>
+                    </select>
+                </div>
+                <div class="config-row">
+                    <div class="config-label">安全級別：</div>
+                    <select id="security-level">
+                        <option value="loose">寬鬆 (允許點擊事件)</option>
+                        <option value="strict">嚴格 (不允許點擊)</option>
+                    </select>
+                </div>
+                <div class="config-row">
+                    <div class="config-label">圖表尺寸設定：</div>
+                </div>
+                <div class="config-row">
+                    <div class="config-label">寬度 (像素)：</div>
+                    <input type="number" id="diagram-width" min="100" max="2000" value="800" step="50">
+                </div>
+                <div class="config-row">
+                    <div class="config-label">高度 (像素)：</div>
+                    <input type="number" id="diagram-height" min="100" max="2000" value="600" step="50">
+                </div>
+                <div class="config-row">
+                    <label>
+                        <input type="checkbox" id="use-fixed-size" checked> 使用固定尺寸
+                    </label>
+                    <label style="margin-left: 20px;">
+                        <input type="checkbox" id="maintain-aspect-ratio"> 保持比例
+                    </label>
+                </div>
+                <div class="config-row">
+                    <div class="config-label">縮放比例：</div>
+                    <input type="range" id="diagram-scale" min="0.5" max="2" value="1" step="0.1" style="width: 150px;">
+                    <span id="scale-value" style="margin-left: 10px;">1.0</span>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="flowchart-tab">
+                <div class="config-row">
+                    <div class="config-label">圖表方向：</div>
+                    <select id="direction-select">
+                        <option value="TB">上到下 (TB)</option>
+                        <option value="TD">頂部到底部 (TD)</option>
+                        <option value="BT">下到上 (BT)</option>
+                        <option value="LR">左到右 (LR)</option>
+                        <option value="RL">右到左 (RL)</option>
+                    </select>
+                </div>
+                
+                <div class="config-row">
+                    <div class="config-label">佈局方式：</div>
+                    <select id="layout-select">
+                        <option value="default">預設佈局</option>
+                        <option value="hierarchical">分層次化佈局</option>
+                        <option value="adaptive">自適應佈局</option>
+                        <option value="circular">環形佈局</option>
+                        <option value="grid">網格佈局</option>
+                    </select>
+                </div>
+                
+                <div class="config-row">
+                    <div class="config-label">曲線樣式：</div>
+                    <select id="curve-select">
+                        <option value="linear">直線 (linear)</option>
+                        <option value="basis">平滑曲線 (basis)</option>
+                        <option value="cardinal">基數曲線 (cardinal)</option>
+                        <option value="step">階梯式 (step)</option>
+                    </select>
+                </div>
+                
+                <div class="config-row">
+                    <div class="config-label">節點間距：</div>
+                    <input type="number" id="node-spacing" min="10" max="200" value="50" step="5">
+                </div>
+                
+                <div class="config-row">
+                    <div class="config-label">層次間距：</div>
+                    <input type="number" id="rank-spacing" min="10" max="200" value="50" step="5">
+                </div>
+            </div>
+            
+            <div class="tab-content" id="sequence-tab">
+                <div class="config-row">
+                    <div class="config-label">角色間距：</div>
+                    <input type="number" id="actor-margin" min="50" max="250" value="150" step="10">
+                </div>
+                
+                <div class="config-row">
+                    <div class="config-label">消息箭頭樣式：</div>
+                    <select id="arrow-select">
+                        <option value="default">預設</option>
+                        <option value="wide">寬箭頭</option>
+                        <option value="angular">角形箭頭</option>
+                        <option value="open">開放式箭頭</option>
+                    </select>
+                </div>
+                
+                <div class="config-row">
+                    <div class="config-label">角色形狀：</div>
+                    <select id="actor-shape">
+                        <option value="rect">矩形</option>
+                        <option value="round">圓角矩形</option>
+                        <option value="circle">圓形</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="class-tab">
+                <div class="config-row">
+                    <div class="config-label">類別圖定位：</div>
+                    <select id="class-layout">
+                        <option value="default">預設</option>
+                        <option value="compact">緊湊佈局</option>
+                        <option value="hierarchy">階層式</option>
+                    </select>
+                </div>
+                
+                <div class="config-row">
+                    <div class="config-label">類別形狀：</div>
+                    <select id="class-shape">
+                        <option value="rect">矩形</option>
+                        <option value="round">圓角矩形</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="gantt-tab">
+                <div class="config-row">
+                    <div class="config-label">甘特圖檢視：</div>
+                    <select id="gantt-axis">
+                        <option value="default">預設</option>
+                        <option value="day">每日檢視</option>
+                        <option value="week">每週檢視</option>
+                        <option value="month">每月檢視</option>
+                    </select>
+                </div>
+                
+                <div class="config-row">
+                    <div class="config-label">任務間距：</div>
+                    <input type="number" id="gantt-task-spacing" min="5" max="100" value="20" step="5">
+                </div>
+            </div>
+            
+            <div class="tab-content" id="state-tab">
+                <div class="config-row">
+                    <div class="config-label">狀態形狀：</div>
+                    <select id="state-shape">
+                        <option value="default">預設</option>
+                        <option value="round">圓角矩形</option>
+                        <option value="square">方形</option>
+                        <option value="circle">圓形</option>
+                    </select>
+                </div>
+                
+                <div class="config-row">
+                    <div class="config-label">轉換樣式：</div>
+                    <select id="state-transition">
+                        <option value="default">預設箭頭</option>
+                        <option value="thick">粗箭頭</option>
+                        <option value="dotted">點線箭頭</option>
+                    </select>
+                </div>
+                
+                <div class="config-row">
+                    <div class="config-label">狀態間距：</div>
+                    <input type="number" id="state-spacing" min="10" max="200" value="40" step="5">
+                </div>
+            </div>
+            
+            <div class="config-row">
+                <button id="apply-settings">套用設定</button>
+            </div>
+            
+            <div class="export-options">
+                <h3>匯出選項</h3>
+                <div class="button-group">
+                    <button id="export-png">匯出 PNG</button>
+                    <button id="export-svg">匯出 SVG</button>
+                    <button id="export-mmd">匯出 MMD</button>
+                </div>
+                <div class="config-row" style="margin-top: 10px;">
+                    <div class="config-label">檔案名稱：</div>
+                    <input type="text" id="filename" value="mermaid-diagram" placeholder="輸入檔案名稱">
+                </div>
+                <div class="config-row">
+                    <div class="config-label">PNG縮放比例：</div>
+                    <input type="number" id="png-scale" min="1" max="5" value="2" step="0.5">
+                    <div class="config-label">PNG邊距：</div>
+                    <input type="number" id="png-padding" min="0" max="50" value="10" step="5">
+                </div>
+            </div>
         </div>
-        <div id="actions">
-            <h2>行動</h2>
-            <button onclick="professionalTraining()">訓練</button>
-            <button onclick="work()">工作</button>
-            <button onclick="rest()">休息</button>
-            <button onclick="challenge()">挑戰</button>
-            <button onclick="showCareerOptions()">轉職</button>
+        
+        <div class="editor-container">
+            <div class="code-area">
+                <h2>編輯區</h2>
+                <p>在此輸入 MERMAID 語法：</p>
+                <textarea id="code-input" placeholder="在此輸入 MERMAID 語法..."></textarea>
+                <div class="button-group">
+                    <button id="render-btn">繪製圖表</button>
+                    <button id="clear-btn">清除</button>
+                    <button id="copy-btn">複製語法</button>
+                    <button id="load-example">載入範例</button>
+                    <button id="check-syntax">檢查語法</button>
+                </div>
+            </div>
+            
+            <div class="preview-area">
+                <h2>預覽區</h2>
+                <div id="diagram-output"></div>
+                <div id="error-output"></div>
+            </div>
         </div>
-        <div id="manager-dialog">
-            <h2>經紀人對話</h2>
-            <p id="manager-message">歡迎來到星光大道！讓我們一起努力，創造屬於你的傳奇！</p>
+        
+        <div class="examples">
+            <h2>MERMAID 語法範例</h2>
+            
+            <div class="example-item">
+                <h3>流程圖 (Flowchart)</h3>
+                <div class="example-code">graph TD
+    A[開始] --> B{是否有帳戶?}
+    B -->|是| C[登入]
+    B -->|否| D[註冊]
+    C --> E[主頁面]
+    D --> E
+    E --> F[結束]</div>
+                <button class="use-example" data-type="flowchart">使用此範例</button>
+            </div>
+            
+            <div class="example-item">
+                <h3>序列圖 (Sequence Diagram)</h3>
+                <div class="example-code">sequenceDiagram
+    participant 客戶
+    participant 服務員
+    participant 廚師
+    
+    客戶->>服務員: 點餐
+    服務員->>廚師: 傳達訂單
+    廚師->>廚師: 準備餐點
+    廚師->>服務員: 餐點準備完成
+    服務員->>客戶: 送餐</div>
+                <button class="use-example" data-type="sequence">使用此範例</button>
+            </div>
+            
+            <div class="example-item">
+                <h3>甘特圖 (Gantt Chart)</h3>
+                <div class="example-code">gantt
+    title 專案時程表
+    dateFormat YYYY-MM-DD
+    section 規劃階段
+    需求分析       :a1, 2023-01-01, 7d
+    系統設計       :a2, after a1, 10d
+    section 開發階段
+    編碼實作       :a3, after a2, 15d
+    測試          :a4, after a3, 5d
+    section 部署階段
+    系統部署       :a5, after a4, 2d
+    使用者培訓     :a6, after a5, 3d</div>
+                <button class="use-example" data-type="gantt">使用此範例</button>
+            </div>
+            
+            <div class="example-item">
+                <h3>類別圖 (Class Diagram)</h3>
+                <div class="example-code">classDiagram
+    class 動物 {
+        +String 名稱
+        +int 年齡
+        +吃()
+        +睡覺()
+    }
+    class 狗 {
+        +String 品種
+        +吠叫()
+    }
+    class 貓 {
+        +String 毛色
+        +喵喵叫()
+    }
+    動物 <|-- 狗
+    動物 <|-- 貓</div>
+                <button class="use-example" data-type="class">使用此範例</button>
+            </div>
+            
+            <div class="example-item">
+                <h3>狀態圖 (State Diagram)</h3>
+                <div class="example-code">stateDiagram-v2
+    [*] --> 閒置
+    閒置 --> 處理中: 開始處理
+    處理中 --> 完成: 處理完成
+    處理中 --> 錯誤: 發生錯誤
+    錯誤 --> 處理中: 重試
+    完成 --> [*]</div>
+                <button class="use-example" data-type="state">使用此範例</button>
+            </div>
         </div>
-        <div id="events">
-            <h2>事件</h2>
-            <ul id="event-log"></ul>
+        
+        <div class="instructions">
+            <h2>使用說明</h2>
+            <ol>
+                <li>在編輯區輸入 MERMAID 語法，或從下方範例中選擇一個</li>
+                <li>在設定面板中切換標籤，選擇適合的樣式和佈局選項</li>
+                <li>點擊「套用設定」按鈕來更新設定</li>
+                <li>點擊「繪製圖表」按鈕產生圖表</li>
+                <li>使用匯出選項將圖表匯出為 PNG、SVG 或 MMD 格式</li>
+                <li>如需清除編輯區，請點擊「清除」按鈕</li>
+                <li>點擊「複製語法」可將目前的 MERMAID 語法複製到剪貼簿</li>
+                <li>若圖表無法正確渲染，請點擊「檢查語法」尋找可能的錯誤</li>
+            </ol>
+            <p>想了解更多關於 MERMAID 語法的資訊，請訪問 <a href="https://mermaid.js.org/" target="_blank">MERMAID 官方文檔</a>。</p>
         </div>
-        <div id="achievements">
-            <h2>成就</h2>
-            <ul id="achievement-list"></ul>
-        </div>
-        <div id="leaderboard">
-            <h2>排行榜</h2>
-            <table id="leaderboard-table">
-                <tr>
-                    <th>排名</th>
-                    <th>名字</th>
-                    <th>職業</th>
-                    <th>人氣</th>
-                </tr>
-            </table>
-        </div>
-        <button onclick="saveGame()">儲存遊戲</button>
-        <button onclick="loadGame()">載入遊戲</button>
-    </div>
-    <div id="career-options">
-        <h2>選擇新職業</h2>
-        <div id="career-buttons"></div>
-        <button onclick="document.getElementById('career-options').style.display='none'">取消</button>
     </div>
 
     <script>
-        // 遊戲狀態
-        let gameState = {
-            playerName: "",
-            playerBirthday: "",
-            date: new Date(2024, 0, 1),
-            career: "新人",
-            energy: 100,
-            money: 1000,
-            popularity: 0,
-            actionsLeft: 4,
-            skills: {
-                singing: 1,
-                dancing: 1,
-                acting: 1,
-                variety: 1,
-                hosting: 1
-            },
-            achievements: [],
-            eventLog: [],
-            unlockedCareers: ["新人"],
-            careerNotifications: []
+    // 等待頁面載入完成
+    window.onload = function() {
+        // 初始化變數
+        var codeInput = document.getElementById('code-input');
+        var diagramOutput = document.getElementById('diagram-output');
+        var errorOutput = document.getElementById('error-output');
+        var renderBtn = document.getElementById('render-btn');
+        var clearBtn = document.getElementById('clear-btn');
+        var copyBtn = document.getElementById('copy-btn');
+        var loadExampleBtn = document.getElementById('load-example');
+        var applySettingsBtn = document.getElementById('apply-settings');
+        var exportPngBtn = document.getElementById('export-png');
+        var exportSvgBtn = document.getElementById('export-svg');
+        var exportMmdBtn = document.getElementById('export-mmd');
+        var filenameInput = document.getElementById('filename');
+        var checkSyntaxBtn = document.getElementById('check-syntax');
+        var tabButtons = document.querySelectorAll('.tab');
+        var useExampleBtns = document.querySelectorAll('.use-example');
+        
+        // 配置
+        var config = {
+            theme: 'default',
+            securityLevel: 'loose',
+            direction: 'TB',
+            layout: 'default',
+            curve: 'linear',
+            nodeSpacing: 50,
+            rankSpacing: 50,
+            actorMargin: 150,
+            arrow: 'default',
+            actorShape: 'rect',
+            classLayout: 'default',
+            classShape: 'rect',
+            ganttAxis: 'default',
+            ganttTaskSpacing: 20,
+            stateShape: 'default',
+            stateTransition: 'default',
+            stateSpacing: 40,
+            pngScale: 2,
+            pngPadding: 10,
+            diagramWidth: 800,
+            diagramHeight: 600,
+            useFixedSize: true,
+            maintainAspectRatio: false,
+            diagramScale: 1.0
         };
-
-        // 成就定義
-        const achievements = [
-            { name: "初露頭角", condition: () => gameState.popularity >= 100 },
-            { name: "小有名氣", condition: () => gameState.popularity >= 1000 },
-            { name: "當紅炸子雞", condition: () => gameState.popularity >= 10000 },
-            { name: "歌神", condition: () => gameState.skills.singing >= 100 },
-            { name: "舞王", condition: () => gameState.skills.dancing >= 100 },
-            { name: "影帝", condition: () => gameState.skills.acting >= 100 },
-            { name: "綜藝天王", condition: () => gameState.skills.variety >= 100 },
-            { name: "金牌主持", condition: () => gameState.skills.hosting >= 100 }
-        ];
-
-        // 職業定義
-        const careers = [
-            { name: "新人", unlockCondition: () => true },
-            { name: "歌手", unlockCondition: () => gameState.skills.singing >= 20 },
-            { name: "舞者", unlockCondition: () => gameState.skills.dancing >= 20 },
-            { name: "演員", unlockCondition: () => gameState.skills.acting >= 20 },
-            { name: "綜藝藝人", unlockCondition: () => gameState.skills.variety >= 20 },
-            { name: "主持人", unlockCondition: () => gameState.skills.hosting >= 20 },
-            { 
-                name: "全能藝人", 
-                unlockCondition: () => 
-                    gameState.skills.singing >= 50 && 
-                    gameState.skills.dancing >= 50 && 
-                    gameState.skills.acting >= 50 && 
-                    gameState.skills.variety >= 50 && 
-                    gameState.skills.hosting >= 50 &&
-                    gameState.achievements.includes("小有名氣")
-            }
-        ];
-
-        // AI對手
-        let aiOpponents = [];
-
-        // 生成AI對手
-        function generateAIOpponents() {
-            const firstNames = ["陳", "林", "黃", "張", "李", "王", "吳", "劉", "蔡", "楊"];
-            const lastNames = ["雨辰", "夢潔", "雅靜", "軒宇", "志浩", "宇軒", "卓楊", "曉琳", "宇豪", "婉婷"];
-            
-            aiOpponents = [];
-            for (let i = 0; i < 10; i++) {
-                const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-                const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-                const name = firstName + lastName;
+        
+        // 範例代碼
+        var examples = {
+            flowchart: "graph TD\n    A[開始] --> B{是否有帳戶?}\n    B -->|是| C[登入]\n    B -->|否| D[註冊]\n    C --> E[主頁面]\n    D --> E\n    E --> F[結束]",
+            sequence: "sequenceDiagram\n    participant 客戶\n    participant 服務員\n    participant 廚師\n    \n    客戶->>服務員: 點餐\n    服務員->>廚師: 傳達訂單\n    廚師->>廚師: 準備餐點\n    廚師->>服務員: 餐點準備完成\n    服務員->>客戶: 送餐",
+            gantt: "gantt\n    title 專案時程表\n    dateFormat YYYY-MM-DD\n    section 規劃階段\n    需求分析       :a1, 2023-01-01, 7d\n    系統設計       :a2, after a1, 10d\n    section 開發階段\n    編碼實作       :a3, after a2, 15d\n    測試          :a4, after a3, 5d\n    section 部署階段\n    系統部署       :a5, after a4, 2d\n    使用者培訓     :a6, after a5, 3d",
+            class: "classDiagram\n    class 動物 {\n        +String 名稱\n        +int 年齡\n        +吃()\n        +睡覺()\n    }\n    class 狗 {\n        +String 品種\n        +吠叫()\n    }\n    class 貓 {\n        +String 毛色\n        +喵喵叫()\n    }\n    動物 <|-- 狗\n    動物 <|-- 貓",
+            state: "stateDiagram-v2\n    [*] --> 閒置\n    閒置 --> 處理中: 開始處理\n    處理中 --> 完成: 處理完成\n    處理中 --> 錯誤: 發生錯誤\n    錯誤 --> 處理中: 重試\n    完成 --> [*]"
+        };
+        
+        // 初始化 Mermaid
+        var mermaidInitialized = false;
+        function initializeMermaid() {
+            try {
+                // 檢查 mermaid 是否已定義
+                if (typeof mermaid === 'undefined') {
+                    console.warn("Mermaid 庫尚未載入，將在載入後初始化");
+                    window.mermaidInitialized = true; // 設定標記，讓備用載入機制知道要初始化
+                    showError("Mermaid 庫載入中，請稍等片刻再試...");
+                    return false;
+                }
                 
-                const career = careers[Math.floor(Math.random() * (careers.length - 1)) + 1].name;
-                
-                const skills = {
-                    singing: Math.floor(Math.random() * 50) + 1,
-                    dancing: Math.floor(Math.random() * 50) + 1,
-                    acting: Math.floor(Math.random() * 50) + 1,
-                    variety: Math.floor(Math.random() * 50) + 1,
-                    hosting: Math.floor(Math.random() * 50) + 1
-                };
-                
-                const popularity = Math.floor(Math.random() * 5000) + 100;
-                
-                aiOpponents.push({ name, career, skills, popularity });
-            }
-        }
-
-        // 開始遊戲
-        function startGame() {
-            const artistName = document.getElementById('artist-name').value.trim();
-            const artistBirthday = document.getElementById('artist-birthday').value;
-            if (artistName && artistBirthday) {
-                gameState.playerName = artistName;
-                gameState.playerBirthday = artistBirthday;
-                document.getElementById('start-screen').style.display = 'none';
-                document.getElementById('game-container').style.display = 'block';
-                generateAIOpponents();
-                updateDisplay();
-            } else {
-                alert('請輸入你的藝名和生日！');
-            }
-        }
-
-        // 更新顯示
-        function updateDisplay() {
-            document.getElementById('player-name').textContent = gameState.playerName;
-            document.getElementById('player-birthday').textContent = gameState.playerBirthday;
-            document.getElementById('date').textContent = gameState.date.toLocaleDateString('zh-TW');
-            document.getElementById('career').textContent = gameState.career;
-            document.getElementById('energy').textContent = gameState.energy;
-            document.getElementById('money').textContent = gameState.money;
-            document.getElementById('popularity').textContent = gameState.popularity;
-            document.getElementById('actions-left').textContent = gameState.actionsLeft;
-            
-            document.getElementById('singing').textContent = gameState.skills.singing;
-            document.getElementById('dancing').textContent = gameState.skills.dancing;
-            document.getElementById('acting').textContent = gameState.skills.acting;
-            document.getElementById('variety').textContent = gameState.skills.variety;
-            document.getElementById('hosting').textContent = gameState.skills.hosting;
-            
-            updateEventLog();
-            updateLeaderboard();
-        }
-
-        // 更新事件日誌
-        function updateEventLog() {
-            const eventLog = document.getElementById('event-log');
-            eventLog.innerHTML = '';
-            gameState.eventLog.forEach((event, index) => {
-                const li = document.createElement('li');
-                li.textContent = `${event.date} - ${event.description}`;
-                eventLog.appendChild(li);
-            });
-        }
-
-        // 更新排行榜
-        function updateLeaderboard() {
-            const leaderboard = [
-                { name: gameState.playerName, career: gameState.career, popularity: gameState.popularity },
-                ...aiOpponents
-            ].sort((a, b) => b.popularity - a.popularity);
-
-            const leaderboardTable = document.getElementById('leaderboard-table');
-            leaderboardTable.innerHTML = '<tr><th>排名</th><th>名字</th><th>職業</th><th>人氣</th></tr>';
-
-            leaderboard.forEach((star, index) => {
-                const row = leaderboardTable.insertRow(-1);
-                row.insertCell(0).textContent = index + 1;
-                row.insertCell(1).textContent = star.name;
-                row.insertCell(2).textContent = star.career;
-                row.insertCell(3).textContent = star.popularity;
-            });
-        }
-
-        // 更新經紀人對話
-        function updateManagerDialog(message) {
-            document.getElementById('manager-message').textContent = message;
-        }
-
-        // 訓練（繼續）
-        function professionalTraining() {
-            if (gameState.actionsLeft > 0 && gameState.energy >= 20 && gameState.money >= 200) {
-                gameState.actionsLeft--;
-                gameState.energy -= 20;
-                gameState.money -= 200;
-
-                const careerSkills = {
-                    "新人": ["singing", "dancing", "acting", "variety", "hosting"],
-                    "歌手": ["singing"],
-                    "舞者": ["dancing"],
-                    "演員": ["acting"],
-                    "綜藝藝人": ["variety"],
-                    "主持人": ["hosting"],
-                    "全能藝人": ["singing", "dancing", "acting", "variety", "hosting"]
-                };
-
-                const skillToTrain = careerSkills[gameState.career][Math.floor(Math.random() * careerSkills[gameState.career].length)];
-                const increase = Math.floor(Math.random() * 3) + 2;
-                gameState.skills[skillToTrain] += increase;
-                gameState.popularity += Math.floor(Math.random() * 10);
-
-                addEvent(`訓練：${getSkillName(skillToTrain)}技能提升了${increase}點`);
-                updateManagerDialog(`訓練效果顯著！你的${getSkillName(skillToTrain)}技能有了明顯進步。繼續保持！`);
-                checkCareerProgress();
-                checkEndDay();
-            } else if (gameState.money < 200) {
-                updateManagerDialog("你的資金不足以支付訓練的費用。也許可以先去工作賺些錢？");
-            } else if (gameState.energy < 20) {
-                updateManagerDialog("你看起來很疲憊，先休息一下吧。健康比什麼都重要！");
-            } else {
-                updateManagerDialog("今天的行動次數已經用完了，明天再繼續努力吧！");
-            }
-        }
-
-        // 工作
-        function work() {
-            if (gameState.actionsLeft > 0 && gameState.energy >= 30) {
-                gameState.actionsLeft--;
-                gameState.energy -= 30;
-                
-                const jobTypes = ['唱歌表演', '舞蹈表演', '拍攝廣告', '綜藝節目', '主持活動'];
-                const job = jobTypes[Math.floor(Math.random() * jobTypes.length)];
-                const reward = Math.floor(Math.random() * 500) + 200;
-                const popularityGain = Math.floor(Math.random() * 20) + 10;
-                
-                gameState.money += reward;
-                gameState.popularity += popularityGain;
-                
-                addEvent(`工作：參與了${job}，賺到${reward}元，人氣增加${popularityGain}`);
-                updateManagerDialog(`太棒了！你在${job}中表現出色。這對你的事業發展很有幫助！`);
-                checkCareerProgress();
-                checkEndDay();
-            } else if (gameState.energy < 30) {
-                updateManagerDialog("你看起來很疲憊，先休息一下吧。健康比什麼都重要！");
-            } else {
-                updateManagerDialog("今天的行動次數已經用完了，明天再繼續努力吧！");
-            }
-        }
-
-        // 休息
-        function rest() {
-            if (gameState.actionsLeft > 0) {
-                gameState.actionsLeft--;
-                gameState.energy = Math.min(gameState.energy + 50, 100);
-                addEvent("休息恢復了體力");
-                updateManagerDialog("休息得好！記住，保持良好的身心狀態是成功的關鍵。");
-                checkEndDay();
-            } else {
-                updateManagerDialog("今天的行動次數已經用完了，明天再繼續努力吧！");
-                nextDay();
-            }
-        }
-
-        // 挑戰
-        function challenge() {
-            if (gameState.actionsLeft > 0 && gameState.energy >= 40) {
-                gameState.actionsLeft--;
-                gameState.energy -= 40;
-
-                const opponent = aiOpponents[Math.floor(Math.random() * aiOpponents.length)];
-                const challengeTypes = ['唱歌比賽', '舞蹈對決', '演技比拼', '綜藝表演', '主持競賽'];
-                const challengeType = challengeTypes[Math.floor(Math.random() * challengeTypes.length)];
-                const skillType = {
-                    '唱歌比賽': 'singing',
-                    '舞蹈對決': 'dancing',
-                    '演技比拼': 'acting',
-                    '綜藝表演': 'variety',
-                    '主持競賽': 'hosting'
-                }[challengeType];
-
-                const playerStrength = gameState.skills[skillType] * (1 + gameState.popularity / 10000);
-                const opponentStrength = opponent.skills[skillType] * (1 + opponent.popularity / 10000);
-                const successRate = playerStrength / (playerStrength + opponentStrength);
-
-                if (Math.random() < successRate) {
-                    const popularityGain = Math.floor(Math.random() * 100) + 50;
-                    const skillGain = Math.floor(Math.random() * 3) + 1;
-                    gameState.popularity += popularityGain;
-                    gameState.skills[skillType] += skillGain;
-                    addEvent(`挑戰成功：在${challengeType}中戰勝了${opponent.name}，人氣增加${popularityGain}，${getSkillName(skillType)}技能提升${skillGain}點`);
-                    updateManagerDialog(`恭喜你在${challengeType}中取得勝利！這次的成功將會大大提升你的知名度。`);
+                mermaid.initialize({
+                    startOnLoad: false,
+                    theme: config.theme,
+                    securityLevel: config.securityLevel,
+                    flowchart: {
+                        curve: config.curve,
+                        nodeSpacing: config.nodeSpacing,
+                        rankSpacing: config.rankSpacing
+                    },
+                    sequence: {
+                        actorMargin: config.actorMargin
+                    }
+                });
+                mermaidInitialized = true;
+                // 檢查版本信息 - 兼容不同的 Mermaid 版本
+                var versionInfo = "";
+                if (typeof mermaid.version === 'function') {
+                    versionInfo = mermaid.version();
+                } else if (typeof mermaid.version === 'string') {
+                    versionInfo = mermaid.version;
                 } else {
-                    const popularityLoss = Math.floor(Math.random() * 50) + 20;
-                    const skillLoss = Math.floor(Math.random() * 2) + 1;
-                    gameState.popularity = Math.max(0, gameState.popularity - popularityLoss);
-                    gameState.skills[skillType] = Math.max(1, gameState.skills[skillType] - skillLoss);
-                    addEvent(`挑戰失敗：在${challengeType}中輸給了${opponent.name}，人氣減少${popularityLoss}，${getSkillName(skillType)}技能下降${skillLoss}點`);
-                    updateManagerDialog(`這次挑戰的結果不太理想，但別灰心！失敗是成功的母親，繼續努力吧！`);
+                    versionInfo = "未知";
                 }
-
-                checkCareerProgress();
-                checkEndDay();
-            } else if (gameState.energy < 40) {
-                updateManagerDialog("挑戰需要充沛的體力，先休息一下，恢復狀態再挑戰吧！");
-            } else {
-                updateManagerDialog("今天的行動次數已經用完了，明天再繼續努力吧！");
+                console.log("Mermaid 初始化成功，版本:", versionInfo);
+                return true;
+            } catch (error) {
+                console.error("Mermaid 初始化錯誤:", error);
+                showError("Mermaid 初始化錯誤: " + error.message);
+                return false;
             }
         }
-
-        // 顯示職業選項
-        function showCareerOptions() {
-            const careerButtons = document.getElementById('career-buttons');
-            careerButtons.innerHTML = '';
-            careers.forEach(career => {
-                if (career.unlockCondition() && !gameState.unlockedCareers.includes(career.name)) {
-                    const button = document.createElement('button');
-                    button.textContent = career.name;
-                    button.onclick = () => changeCourse(career.name);
-                    careerButtons.appendChild(button);
-                }
-            });
-            document.getElementById('career-options').style.display = 'block';
-        }
-
-        // 轉換職業
-        function changeCourse(newCareer) {
-            if (gameState.actionsLeft > 0) {
-                gameState.actionsLeft--;
-                gameState.career = newCareer;
-                gameState.unlockedCareers.push(newCareer);
-                addEvent(`轉換了職業方向，現在是${newCareer}`);
-                updateManagerDialog(`職業轉換成功！作為${newCareer}，你將面臨新的挑戰和機遇。`);
-                document.getElementById('career-options').style.display = 'none';
-                checkEndDay();
-            } else {
-                updateManagerDialog("今天的行動次數已經用完了，明天再考慮職業發展吧！");
-            }
-        }
-
-        // 檢查職業進展
-        function checkCareerProgress() {
-            careers.forEach(career => {
-                if (career.name !== gameState.career && career.unlockCondition() && !gameState.unlockedCareers.includes(career.name) && !gameState.careerNotifications.includes(career.name)) {
-                    updateManagerDialog(`恭喜！你已經具備成為${career.name}的條件了。考慮轉換職業嗎？`);
-                    gameState.careerNotifications.push(career.name);
-                }
-            });
-        }
-
-        // 檢查日結
-        function checkEndDay() {
-            if (gameState.actionsLeft <= 0) {
-                nextDay();
-            } else {
-                updateDisplay();
-            }
-        }
-
-        // 下一天
-        function nextDay() {
-            gameState.date.setDate(gameState.date.getDate() + 1);
-            gameState.actionsLeft = 4;
-            gameState.energy = Math.min(gameState.energy + 20, 100);
-            checkAchievements();
-            randomEvent();
-            updateAIOpponents();
-            updateDisplay();
-        }
-
-        // 添加事件
-        function addEvent(description) {
-            const eventDate = gameState.date.toLocaleDateString('zh-TW');
-            gameState.eventLog.unshift({ date: eventDate, description: description });
-            if (gameState.eventLog.length > 10) {
-                gameState.eventLog.pop();
-            }
-        }
-
-        // 檢查成就
-        function checkAchievements() {
-            achievements.forEach(achievement => {
-                if (!gameState.achievements.includes(achievement.name) && achievement.condition()) {
-                    gameState.achievements.push(achievement.name);
-                    addEvent(`獲得成就：${achievement.name}`);
-                    updateManagerDialog(`恭喜你獲得了"${achievement.name}"成就！你的努力得到了回報！`);
-                    const li = document.createElement('li');
-                    li.textContent = achievement.name;
-                    document.getElementById('achievement-list').appendChild(li);
-                }
-            });
-        }
-
-        // 隨機事件
-        function randomEvent() {
-            const events = [
-                { name: "粉絲見面會", effect: () => { gameState.popularity += 50; gameState.energy -= 30; } },
-                { name: "慈善活動", effect: () => { gameState.popularity += 30; gameState.money -= 500; } },
-                { name: "綜藝節目邀請", effect: () => { gameState.popularity += 100; gameState.skills.variety += 2; } },
-                { name: "生病", effect: () => { gameState.energy -= 50; } },
-                { name: "獲得贊助", effect: () => { gameState.money += 1000; } },
-                { name: "參加選秀節目", effect: () => { gameState.popularity += 200; gameState.skills.singing += 3; gameState.skills.dancing += 3; } },
-                { name: "代言商品", effect: () => { gameState.money += 2000; gameState.popularity += 50; } },
-                { name: "社交媒體爆紅", effect: () => { gameState.popularity += 500; } },
-                { name: "參演電影", effect: () => { gameState.popularity += 300; gameState.skills.acting += 5; gameState.money += 3000; } },
-                { name: "發行個人單曲", effect: () => { gameState.popularity += 250; gameState.skills.singing += 4; gameState.money += 1500; } }
-            ];
-
-            if (Math.random() < 0.3) {
-                const event = events[Math.floor(Math.random() * events.length)];
-                event.effect();
-                addEvent(`隨機事件：${event.name}`);
-                updateManagerDialog(`發生了${event.name}事件！這對你的事業會有影響。`);
-            }
-        }
-
-        // 更新AI對手
-        function updateAIOpponents() {
-            aiOpponents.forEach(opponent => {
-                opponent.popularity += Math.floor(Math.random() * 20) - 5;
-                opponent.popularity = Math.max(0, opponent.popularity);
+        
+        // 顯示錯誤訊息
+        function showError(message, lineNumber) {
+            errorOutput.innerHTML = "";
+            var errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            
+            if (lineNumber !== undefined) {
+                var lines = codeInput.value.split('\n');
+                var errorContext = "";
                 
-                const skillIncrease = Math.floor(Math.random() * 3);
-                const skills = ['singing', 'dancing', 'acting', 'variety', 'hosting'];
-                const randomSkill = skills[Math.floor(Math.random() * skills.length)];
-                opponent.skills[randomSkill] += skillIncrease;
+                var startLine = Math.max(0, lineNumber - 2);
+                var endLine = Math.min(lines.length - 1, lineNumber + 2);
+                
+                for (var i = startLine; i <= endLine; i++) {
+                    if (i === lineNumber) {
+                        errorContext += (i + 1) + ": " + lines[i] + " <-- 可能的錯誤在此行\n";
+                    } else {
+                        errorContext += (i + 1) + ": " + lines[i] + "\n";
+                    }
+                }
+                
+                errorDiv.innerHTML = "<strong>錯誤:</strong> " + message + "\n\n<strong>錯誤位置附近:</strong>\n" + errorContext;
+            } else {
+                errorDiv.textContent = "錯誤: " + message;
+            }
+            
+            errorOutput.appendChild(errorDiv);
+        }
+        
+        // 顯示成功訊息
+        function showSuccess(message) {
+            errorOutput.innerHTML = "";
+            var successDiv = document.createElement('div');
+            successDiv.className = 'info-message';
+            successDiv.textContent = message;
+            errorOutput.appendChild(successDiv);
+        }
+        
+        // 載入隨機範例
+        function loadRandomExample() {
+            var types = Object.keys(examples);
+            var randomType = types[Math.floor(Math.random() * types.length)];
+            codeInput.value = examples[randomType];
+            renderDiagram();
+        }
+        
+        // 檢查語法
+        function checkSyntax() {
+            try {
+                var code = codeInput.value.trim();
+                if (!code) {
+                    showError("請輸入 MERMAID 語法來檢查");
+                    return;
+                }
+                
+                // 使用 Mermaid 的解析函數來檢查語法
+                mermaid.parse(code);
+                showSuccess("語法檢查通過！圖表語法正確。");
+                return true;
+            } catch (error) {
+                console.error("語法檢查錯誤:", error);
+                
+                // 嘗試獲取錯誤行號
+                var lineMatch = error.message.match(/Line (\d+)/i);
+                var lineNumber = lineMatch ? parseInt(lineMatch[1]) - 1 : undefined;
+                
+                showError("語法錯誤: " + error.message, lineNumber);
+                return false;
+            }
+        }
+        
+        // 渲染圖表
+        function renderDiagram() {
+            try {
+                // 確保 Mermaid 已初始化
+                if (!mermaidInitialized && !initializeMermaid()) {
+                    return; // 如果初始化失敗則退出
+                }
+                
+                var code = codeInput.value.trim();
+                if (!code) {
+                    diagramOutput.innerHTML = "<p>請輸入 MERMAID 語法來繪製圖表</p>";
+                    errorOutput.innerHTML = "";
+                    return;
+                }
+                
+                // 清除舊的圖表和錯誤訊息
+                diagramOutput.innerHTML = "";
+                errorOutput.innerHTML = "";
+                
+                // 創建容器包裝
+                var wrapperContainer = document.createElement('div');
+                wrapperContainer.className = 'diagram-container';
+                
+                // 如果使用固定尺寸，則設置容器大小
+                if (config.useFixedSize) {
+                    wrapperContainer.style.width = config.diagramWidth + 'px';
+                    wrapperContainer.style.height = config.diagramHeight + 'px';
+                }
+                
+                // 創建新的Mermaid容器
+                var container = document.createElement('div');
+                container.className = 'mermaid';
+                container.textContent = code;
+                
+                // 如果設置了縮放，應用縮放
+                if (config.diagramScale !== 1.0) {
+                    container.style.transform = 'scale(' + config.diagramScale + ')';
+                    container.style.transformOrigin = 'top left';
+                }
+                
+                wrapperContainer.appendChild(container);
+                diagramOutput.appendChild(wrapperContainer);
+                
+                // 渲染新圖表
+                mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+                
+                // 渲染完成後調整SVG大小
+                setTimeout(function() {
+                    var svgElement = container.querySelector('svg');
+                    if (svgElement && config.useFixedSize) {
+                        if (config.maintainAspectRatio) {
+                            // 保持比例的情況下調整大小
+                            var originalWidth = svgElement.viewBox.baseVal.width;
+                            var originalHeight = svgElement.viewBox.baseVal.height;
+                            var widthRatio = config.diagramWidth / originalWidth;
+                            var heightRatio = config.diagramHeight / originalHeight;
+                            var ratio = Math.min(widthRatio, heightRatio);
+                            
+                            svgElement.style.width = (originalWidth * ratio) + 'px';
+                            svgElement.style.height = (originalHeight * ratio) + 'px';
+                            svgElement.style.display = 'block';
+                            svgElement.style.margin = '0 auto';
+                        } else {
+                            // 直接設置寬高
+                            svgElement.style.width = '100%';
+                            svgElement.style.height = '100%';
+                        }
+                    }
+                }, 100); // 給渲染一點時間
+                
+            } catch (error) {
+                console.error("渲染圖表錯誤:", error);
+                
+                // 嘗試獲取錯誤行號
+                var lineMatch = error.message.match(/Line (\d+)/i);
+                var lineNumber = lineMatch ? parseInt(lineMatch[1]) - 1 : undefined;
+                
+                showError("渲染錯誤: " + error.message, lineNumber);
+            }
+        }
+        
+        // 設定標籤切換
+        function setupTabs() {
+            tabButtons.forEach(function(button) {
+                button.addEventListener('click', function() {
+                    // 移除所有active類
+                    tabButtons.forEach(function(btn) {
+                        btn.classList.remove('active');
+                    });
+                    
+                    // 隱藏所有內容
+                    document.querySelectorAll('.tab-content').forEach(function(content) {
+                        content.classList.remove('active');
+                    });
+                    
+                    // 激活當前標籤和內容
+                    this.classList.add('active');
+                    var tabId = this.getAttribute('data-tab') + '-tab';
+                    document.getElementById(tabId).classList.add('active');
+                });
             });
         }
-
-        // 獲取技能名稱
-        function getSkillName(skill) {
-            const skillNames = {
-                singing: '唱歌',
-                dancing: '跳舞',
-                acting: '演技',
-                variety: '綜藝',
-                hosting: '主持'
+        
+        // 設定使用範例按鈕
+        function setupExampleButtons() {
+            useExampleBtns.forEach(function(button) {
+                button.addEventListener('click', function() {
+                    var type = this.getAttribute('data-type');
+                    if (examples[type]) {
+                        codeInput.value = examples[type];
+                        renderDiagram();
+                        
+                        // 激活相應標籤
+                        var tabToShow = 'basic';
+                        if (type === 'flowchart') tabToShow = 'flowchart';
+                        else if (type === 'sequence') tabToShow = 'sequence';
+                        else if (type === 'class') tabToShow = 'class';
+                        else if (type === 'gantt') tabToShow = 'gantt';
+                        else if (type === 'state') tabToShow = 'state';
+                        
+                        document.querySelector('.tab[data-tab="' + tabToShow + '"]').click();
+                    }
+                });
+            });
+        }
+        
+        // 應用設定
+        function applySettings() {
+            // 基本設定
+            config.theme = document.getElementById('theme-select').value;
+            config.securityLevel = document.getElementById('security-level').value;
+            
+            // 圖表尺寸設定
+            config.diagramWidth = parseInt(document.getElementById('diagram-width').value);
+            config.diagramHeight = parseInt(document.getElementById('diagram-height').value);
+            config.useFixedSize = document.getElementById('use-fixed-size').checked;
+            config.maintainAspectRatio = document.getElementById('maintain-aspect-ratio').checked;
+            config.diagramScale = parseFloat(document.getElementById('diagram-scale').value);
+            
+            // 流程圖設定
+            config.direction = document.getElementById('direction-select').value;
+            config.layout = document.getElementById('layout-select').value;
+            config.curve = document.getElementById('curve-select').value;
+            config.nodeSpacing = parseInt(document.getElementById('node-spacing').value);
+            config.rankSpacing = parseInt(document.getElementById('rank-spacing').value);
+            
+            // 序列圖設定
+            config.actorMargin = parseInt(document.getElementById('actor-margin').value);
+            config.arrow = document.getElementById('arrow-select').value;
+            config.actorShape = document.getElementById('actor-shape').value;
+            
+            // 類別圖設定
+            config.classLayout = document.getElementById('class-layout').value;
+            config.classShape = document.getElementById('class-shape').value;
+            
+            // 甘特圖設定
+            config.ganttAxis = document.getElementById('gantt-axis').value;
+            config.ganttTaskSpacing = parseInt(document.getElementById('gantt-task-spacing').value);
+            
+            // 狀態圖設定
+            config.stateShape = document.getElementById('state-shape').value;
+            config.stateTransition = document.getElementById('state-transition').value;
+            config.stateSpacing = parseInt(document.getElementById('state-spacing').value);
+            
+            // PNG匯出設定
+            config.pngScale = parseFloat(document.getElementById('png-scale').value);
+            config.pngPadding = parseInt(document.getElementById('png-padding').value);
+            
+            // 確保 Mermaid 已初始化
+            if (!mermaidInitialized && !initializeMermaid()) {
+                return; // 如果初始化失敗則退出
+            }
+            
+            // 更新 Mermaid 配置
+            var mermaidConfig = {
+                startOnLoad: false,
+                theme: config.theme,
+                securityLevel: config.securityLevel,
+                flowchart: {
+                    curve: config.curve,
+                    nodeSpacing: config.nodeSpacing,
+                    rankSpacing: config.rankSpacing
+                },
+                sequence: {
+                    actorMargin: config.actorMargin
+                }
             };
-            return skillNames[skill];
+            
+            try {
+                mermaid.initialize(mermaidConfig);
+                
+                // 修改流程圖方向 (更穩健的方法)
+                var code = codeInput.value;
+                var graphDirectionRegex = /^(\s*graph\s+)(TD|TB|BT|LR|RL)/m;
+                if (graphDirectionRegex.test(code)) {
+                    codeInput.value = code.replace(graphDirectionRegex, '$1' + config.direction);
+                }
+                
+                renderDiagram();
+                showSuccess('設定已套用');
+            } catch (error) {
+                console.error("套用設定錯誤:", error);
+                showError('套用設定時發生錯誤: ' + error.message);
+            }
         }
-
-        // 保存遊戲
-        function saveGame() {
-            localStorage.setItem('starMakerSave', JSON.stringify(gameState));
-            addEvent("遊戲已儲存");
-            updateManagerDialog("遊戲已保存。記得定期保存你的進度！");
+        
+        // 匯出為 PNG
+        function exportPNG() {
+            try {
+                var svgElement = document.querySelector('.mermaid svg');
+                if (!svgElement) {
+                    showError('請先繪製圖表');
+                    return;
+                }
+                
+                // 複製一個SVG元素用於調整
+                var svgClone = svgElement.cloneNode(true);
+                var bbox = svgElement.getBBox();
+                
+                // 調整SVG大小，增加邊距
+                var padding = config.pngPadding;
+                svgClone.setAttribute('width', bbox.width + padding * 2);
+                svgClone.setAttribute('height', bbox.height + padding * 2);
+                svgClone.setAttribute('viewBox', `${bbox.x - padding} ${bbox.y - padding} ${bbox.width + padding * 2} ${bbox.height + padding * 2}`);
+                
+                var svgData = new XMLSerializer().serializeToString(svgClone);
+                var svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+                var DOMURL = window.URL || window.webkitURL || window;
+                var url = DOMURL.createObjectURL(svgBlob);
+                
+                var img = new Image();
+                img.onload = function() {
+                    var canvas = document.createElement('canvas');
+                    var scale = config.pngScale;
+                    canvas.width = (bbox.width + padding * 2) * scale;
+                    canvas.height = (bbox.height + padding * 2) * scale;
+                    var ctx = canvas.getContext('2d');
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    ctx.scale(scale, scale);
+                    ctx.drawImage(img, 0, 0);
+                    
+                    canvas.toBlob(function(blob) {
+                        saveAs(blob, filenameInput.value + '.png');
+                    });
+                    
+                    DOMURL.revokeObjectURL(url);
+                };
+                img.src = url;
+            } catch (error) {
+                console.error("匯出 PNG 錯誤:", error);
+                showError('匯出 PNG 時發生錯誤: ' + error.message);
+            }
         }
-
-        // 載入遊戲
-        function loadGame() {
-            const savedGame = localStorage.getItem('starMakerSave');
-            if (savedGame) {
-                gameState = JSON.parse(savedGame);
-                gameState.date = new Date(gameState.date);
-                document.getElementById('start-screen').style.display = 'none';
-                document.getElementById('game-container').style.display = 'block';
-                generateAIOpponents();
-                updateDisplay();
-                addEvent("遊戲已載入");
-                updateManagerDialog("歡迎回來！讓我們繼續你的星途之旅吧！");
-            } else {
-                addEvent("沒有找到儲存的遊戲");
-                updateManagerDialog("似乎沒有找到之前的存檔。讓我們開始一個新的冒險吧！");
+        
+        // 匯出為 SVG
+        function exportSVG() {
+            try {
+                var svgElement = document.querySelector('.mermaid svg');
+                if (!svgElement) {
+                    showError('請先繪製圖表');
+                    return;
+                }
+                
+                // 複製一個SVG元素用於調整
+                var svgClone = svgElement.cloneNode(true);
+                var bbox = svgElement.getBBox();
+                
+                // 調整SVG大小，增加邊距
+                var padding = config.pngPadding;
+                svgClone.setAttribute('width', bbox.width + padding * 2);
+                svgClone.setAttribute('height', bbox.height + padding * 2);
+                svgClone.setAttribute('viewBox', `${bbox.x - padding} ${bbox.y - padding} ${bbox.width + padding * 2} ${bbox.height + padding * 2}`);
+                
+                var svgData = new XMLSerializer().serializeToString(svgClone);
+                var svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+                saveAs(svgBlob, filenameInput.value + '.svg');
+            } catch (error) {
+                console.error("匯出 SVG 錯誤:", error);
+                showError('匯出 SVG 時發生錯誤: ' + error.message);
+            }
+        }
+        
+        // 匯出為 MMD
+        function exportMMD() {
+            try {
+                var code = codeInput.value.trim();
+                if (!code) {
+                    showError('請先輸入 MERMAID 語法');
+                    return;
+                }
+                
+                var blob = new Blob([code], {type: 'text/plain;charset=utf-8'});
+                saveAs(blob, filenameInput.value + '.mmd');
+            } catch (error) {
+                console.error("匯出 MMD 錯誤:", error);
+                showError('匯出 MMD 時發生錯誤: ' + error.message);
+            }
+        }
+        
+        // 設定尺寸相關事件
+        function setupSizeControls() {
+            var diagramWidth = document.getElementById('diagram-width');
+            var diagramHeight = document.getElementById('diagram-height');
+            var useFixedSize = document.getElementById('use-fixed-size');
+            var maintainAspectRatio = document.getElementById('maintain-aspect-ratio');
+            var diagramScale = document.getElementById('diagram-scale');
+            var scaleValue = document.getElementById('scale-value');
+            
+            // 更新縮放比例顯示
+            diagramScale.addEventListener('input', function() {
+                var value = parseFloat(this.value).toFixed(1);
+                scaleValue.textContent = value;
+            });
+            
+            // 固定尺寸選項切換
+            useFixedSize.addEventListener('change', function() {
+                diagramWidth.disabled = !this.checked;
+                diagramHeight.disabled = !this.checked;
+                maintainAspectRatio.disabled = !this.checked;
+            });
+            
+            // 初始狀態
+            diagramWidth.value = config.diagramWidth;
+            diagramHeight.value = config.diagramHeight;
+            useFixedSize.checked = config.useFixedSize;
+            maintainAspectRatio.checked = config.maintainAspectRatio;
+            diagramScale.value = config.diagramScale;
+            scaleValue.textContent = config.diagramScale.toFixed(1);
+            
+            // 如果不使用固定尺寸，禁用相關控制項
+            if (!config.useFixedSize) {
+                diagramWidth.disabled = true;
+                diagramHeight.disabled = true;
+                maintainAspectRatio.disabled = true;
             }
         }
 
-        // 初始化遊戲
-        updateDisplay();
-
-        // 生成初始AI對手
-        generateAIOpponents();
-
-        // 添加一個事件監聽器，以便在頁面加載完成後初始化遊戲
-        window.addEventListener('load', function() {
-            // 如果有保存的遊戲，則載入
-            if (localStorage.getItem('starMakerSave')) {
-                loadGame();
-            } else {
-                // 否則顯示開始遊戲的畫面
-                document.getElementById('start-screen').style.display = 'block';
-                document.getElementById('game-container').style.display = 'none';
-            }
+        // 綁定事件
+        renderBtn.addEventListener('click', renderDiagram);
+        clearBtn.addEventListener('click', function() {
+            codeInput.value = '';
+            diagramOutput.innerHTML = '<p>請輸入 MERMAID 語法來繪製圖表</p>';
+            errorOutput.innerHTML = '';
         });
+        copyBtn.addEventListener('click', function() {
+            codeInput.select();
+            document.execCommand('copy');
+            showSuccess('已複製語法到剪貼簿');
+        });
+        loadExampleBtn.addEventListener('click', loadRandomExample);
+        applySettingsBtn.addEventListener('click', applySettings);
+        exportPngBtn.addEventListener('click', exportPNG);
+        exportSvgBtn.addEventListener('click', exportSVG);
+        exportMmdBtn.addEventListener('click', exportMMD);
+        checkSyntaxBtn.addEventListener('click', checkSyntax);
+        
+        // 初始化
+        setupTabs();
+        setupExampleButtons();
+        setupSizeControls();
+        
+        // 等待一下確保頁面和腳本完全載入
+        setTimeout(function() {
+            initializeMermaid();
+            loadRandomExample();
+        }, 500);
+    };
     </script>
 </body>
 </html>
