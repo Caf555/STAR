@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Art Control Panel - STAR v1.0</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -352,10 +353,12 @@
             background: var(--bg-panel);
             border: 2px solid var(--border-color);
             border-radius: 8px;
-            padding: 16px;
+            padding: 12px;
             cursor: pointer;
             transition: all 0.2s;
             text-align: center;
+            display: flex;
+            flex-direction: column;
         }
 
         .style-card:hover {
@@ -960,6 +963,7 @@
             selectedStyles: [],
             selectedCharacters: [],
             customArtists: [],
+            artistImages: {},  // Store artist preview images
             characterDatabase: {},
             storyboardFrames: [],
             storyboardMode: 'stacking',
@@ -2019,17 +2023,62 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                 const lines = content.split('\n');
 
                 appState.customArtists = [];
-                lines.forEach(line => {
-                    const [name, tag] = line.split(',').map(s => s.trim());
-                    if (name && tag) {
+                let skippedLines = 0;
+
+                lines.forEach((line, index) => {
+                    line = line.trim();
+
+                    // Skip empty lines
+                    if (!line) return;
+
+                    // Skip header line if it contains "Artist Tag" or similar
+                    if (index === 0 && (line.toLowerCase().includes('artist') || line.toLowerCase().includes('tag'))) {
+                        return;
+                    }
+
+                    // Check if line contains comma (two-column format: name, @tag)
+                    if (line.includes(',')) {
+                        const parts = line.split(',').map(s => s.trim());
+                        const name = parts[0];
+                        let tag = parts[1];
+
+                        // Ensure tag starts with @
+                        if (tag && !tag.startsWith('@')) {
+                            tag = '@' + tag;
+                        }
+
+                        if (name && tag) {
+                            appState.customArtists.push({ name, tag, nameEn: name });
+                        } else {
+                            skippedLines++;
+                        }
+                    } else {
+                        // Single column format: just the artist name/tag
+                        let name = line;
+                        let tag = line;
+
+                        // Remove @ if exists, we'll add it back
+                        tag = tag.replace(/^@/, '');
+
+                        // Convert spaces to underscores and lowercase
+                        tag = tag.replace(/\s+/g, '_').toLowerCase();
+
+                        // Add @ prefix
+                        tag = '@' + tag;
+
                         appState.customArtists.push({ name, tag, nameEn: name });
                     }
                 });
 
                 renderCustomStyles();
-                alert(`成功載入 ${appState.customArtists.length} 個自訂風格`);
+
+                let message = `成功載入 ${appState.customArtists.length} 個自訂風格`;
+                if (skippedLines > 0) {
+                    message += `\n（跳過 ${skippedLines} 行無效資料）`;
+                }
+                alert(message);
             };
-            reader.readAsText(file);
+            reader.readAsText(file, 'UTF-8');
         });
 
         function renderCustomStyles() {
@@ -2046,7 +2095,14 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                 card.className = 'style-card';
                 card.onclick = () => toggleStyle(artist);
 
+                // Check if there's a preview image
+                let imageHtml = '';
+                if (artist.imageUrl) {
+                    imageHtml = `<img src="${artist.imageUrl}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 6px; margin-bottom: 8px;" alt="${artist.name}">`;
+                }
+
                 card.innerHTML = `
+                    ${imageHtml}
                     <div class="style-card-name">${artist.name}</div>
                     <div class="style-card-tag">${artist.tag}</div>
                 `;
@@ -2057,6 +2113,135 @@ Use # for characters, @ for artists. Keep prompts concise.`;
 
                 container.appendChild(card);
             });
+        }
+
+        // ZIP File Upload Handler
+        document.getElementById('zipUpload').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!file.name.toLowerCase().endsWith('.zip')) {
+                alert('請選擇 ZIP 檔案');
+                return;
+            }
+
+            try {
+                // Check if JSZip is loaded
+                if (typeof JSZip === 'undefined') {
+                    alert('JSZip 庫未載入，請重新整理頁面後再試');
+                    return;
+                }
+
+                const zip = new JSZip();
+                const zipContent = await zip.loadAsync(file);
+
+                let loadedImages = 0;
+                const promises = [];
+
+                // Process each file in the ZIP
+                zipContent.forEach((relativePath, zipEntry) => {
+                    // Skip directories and non-image files
+                    if (zipEntry.dir) return;
+
+                    const filename = relativePath.split('/').pop().toLowerCase();
+
+                    // Check if it's an image file
+                    if (!filename.match(/\.(jpg|jpeg|png|webp|gif)$/i)) return;
+
+                    // Extract artist name from filename (remove extension)
+                    const artistName = filename.replace(/\.(jpg|jpeg|png|webp|gif)$/i, '');
+
+                    // Find matching artist in customArtists
+                    const promise = zipEntry.async('blob').then(blob => {
+                        const imageUrl = URL.createObjectURL(blob);
+
+                        // Try to match with existing artists
+                        let matched = false;
+
+                        appState.customArtists.forEach(artist => {
+                            // Try exact match
+                            const artistTagClean = artist.tag.replace('@', '').toLowerCase();
+                            const artistNameClean = artist.name.toLowerCase().replace(/\s+/g, '_');
+                            const filenameClean = artistName.toLowerCase();
+
+                            if (filenameClean === artistTagClean ||
+                                filenameClean === artistNameClean ||
+                                artistTagClean.includes(filenameClean) ||
+                                filenameClean.includes(artistTagClean)) {
+
+                                artist.imageUrl = imageUrl;
+                                matched = true;
+                                loadedImages++;
+                            }
+                        });
+
+                        // If no match found, try fuzzy matching
+                        if (!matched) {
+                            appState.customArtists.forEach(artist => {
+                                const similarity = calculateSimilarity(
+                                    artistName.toLowerCase(),
+                                    artist.name.toLowerCase().replace(/\s+/g, '_')
+                                );
+
+                                if (similarity > 0.7) {
+                                    artist.imageUrl = imageUrl;
+                                    loadedImages++;
+                                }
+                            });
+                        }
+                    });
+
+                    promises.push(promise);
+                });
+
+                await Promise.all(promises);
+
+                renderCustomStyles();
+                alert(`成功載入 ${loadedImages} 張畫師預覽圖`);
+
+            } catch (error) {
+                console.error('ZIP loading error:', error);
+                alert('ZIP 檔案載入失敗: ' + error.message);
+            }
+        });
+
+        // Simple string similarity calculation (Levenshtein-based)
+        function calculateSimilarity(str1, str2) {
+            const longer = str1.length > str2.length ? str1 : str2;
+            const shorter = str1.length > str2.length ? str2 : str1;
+
+            if (longer.length === 0) return 1.0;
+
+            const editDistance = getEditDistance(longer, shorter);
+            return (longer.length - editDistance) / longer.length;
+        }
+
+        function getEditDistance(str1, str2) {
+            const matrix = [];
+
+            for (let i = 0; i <= str2.length; i++) {
+                matrix[i] = [i];
+            }
+
+            for (let j = 0; j <= str1.length; j++) {
+                matrix[0][j] = j;
+            }
+
+            for (let i = 1; i <= str2.length; i++) {
+                for (let j = 1; j <= str1.length; j++) {
+                    if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            matrix[i][j - 1] + 1,
+                            matrix[i - 1][j] + 1
+                        );
+                    }
+                }
+            }
+
+            return matrix[str2.length][str1.length];
         }
     </script>
 </body>
