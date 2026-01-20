@@ -804,6 +804,7 @@
             <h1>STAR - AI Art Control Panel <span class="version">v1.0</span></h1>
         </div>
         <div class="header-right">
+            <button class="file-upload-btn" onclick="autoLoadAllFiles()">⚡ 一鍵載入</button>
             <label class="file-upload-btn">
                 上傳 Artist Tag CSV
                 <input type="file" id="csvUpload" accept=".csv" style="display: none;">
@@ -950,16 +951,25 @@
 
             <!-- Characters Tab -->
             <div class="tab-content" id="charactersTab">
+                <div class="upload-section">
+                    <label class="upload-btn">
+                        <input type="file" id="characterCsvUpload" accept=".csv" onchange="loadCharacterCSV(event)" style="display: none;">
+                        📁 上傳角色圖鑑 CSV
+                    </label>
+                </div>
                 <div class="character-filters">
-                    <select id="categoryFilter" class="filter-select" onchange="updateSeriesFilter()">
-                        <option value="">選擇作品分類</option>
+                    <select id="categoryFilter" class="filter-select" onchange="updateTypeFilter()">
+                        <option value="">選擇類別</option>
                     </select>
-                    <select id="seriesFilter" class="filter-select" onchange="updateCharacterList()">
-                        <option value="">選擇作品名稱</option>
+                    <select id="typeFilter" class="filter-select" onchange="updateWorksFilter()">
+                        <option value="">選擇類型</option>
+                    </select>
+                    <select id="worksFilter" class="filter-select" onchange="updateCharacterList()">
+                        <option value="">選擇作品</option>
                     </select>
                 </div>
                 <div class="character-list" id="characterList">
-                    <p style="color: var(--text-secondary);">請選擇作品分類與名稱以顯示角色</p>
+                    <p style="color: var(--text-secondary);">請上傳角色圖鑑 CSV 或選擇類別、類型、作品以顯示角色</p>
                 </div>
             </div>
 
@@ -1073,7 +1083,8 @@
             selectedCharacters: [],
             customArtists: [],
             artistImages: {},  // Store artist preview images
-            characterDatabase: {},
+            characterDatabase: {},  // Loaded from CSV: {類別: {類型: {作品: [角色列表]}}}
+            characterCSVData: [],  // Raw CSV data
             storyboardFrames: [],
             storyboardMode: 'stacking',
             seedMode: 'first-random',
@@ -1117,131 +1128,55 @@
         ];
 
         // ==================== Character Database ====================
-        const characterDatabase = {
-            "熱門遊戲": {
-                "原神": [
-                    {name:"雷電將軍",en:"raiden_shogun",series:"genshin_impact"},{name:"納西妲",en:"nahida_(genshin_impact)",series:"genshin_impact"},{name:"芙寧娜",en:"furina_(genshin_impact)",series:"genshin_impact"},{name:"胡桃",en:"hu_tao_(genshin_impact)",series:"genshin_impact"},{name:"甘雨",en:"ganyu_(genshin_impact)",series:"genshin_impact"},{name:"鍾離",en:"zhongli_(genshin_impact)",series:"genshin_impact"},{name:"八重神子",en:"yae_miko",series:"genshin_impact"},{name:"刻晴",en:"keqing_(genshin_impact)",series:"genshin_impact"},{name:"申鶴",en:"shenhe_(genshin_impact)",series:"genshin_impact"},{name:"夜蘭",en:"yelan_(genshin_impact)",series:"genshin_impact"},{name:"妮露",en:"nilou_(genshin_impact)",series:"genshin_impact"},{name:"娜維婭",en:"navia_(genshin_impact)",series:"genshin_impact"},{name:"僕人",en:"arlecchino_(genshin_impact)",series:"genshin_impact"}
-                ],
-                "崩壞：星穹鐵道": [
-                    {name:"卡芙卡",en:"kafka_(honkai:_star_rail)",series:"honkai:_star_rail"},{name:"流螢",en:"firefly_(honkai:_star_rail)",series:"honkai:_star_rail"},{name:"三月七",en:"march_7th",series:"honkai:_star_rail"},{name:"丹恆",en:"dan_heng",series:"honkai:_star_rail"},{name:"銀狼",en:"silver_wolf_(honkai:_star_rail)",series:"honkai:_star_rail"},{name:"鏡流",en:"jingliu_(honkai:_star_rail)",series:"honkai:_star_rail"},{name:"阮·梅",en:"ruan_mei_(honkai:_star_rail)",series:"honkai:_star_rail"},{name:"黃泉",en:"acheron_(honkai:_star_rail)",series:"honkai:_star_rail"},{name:"花火",en:"sparkle_(honkai:_star_rail)",series:"honkai:_star_rail"},{name:"黑天鵝",en:"black_swan_(honkai:_star_rail)",series:"honkai:_star_rail"}
-                ],
-                "蔚藍檔案": [
-                    {name:"砂狼白子",en:"sunaookami_shiroko",series:"blue_archive"},{name:"早瀨優香",en:"hayase_yuuka",series:"blue_archive"},{name:"陸八魔阿魯",en:"rikuhachima_aru",series:"blue_archive"},{name:"聖園彌香",en:"misono_mika",series:"blue_archive"},{name:"飛鳥馬時",en:"asuma_toki",series:"blue_archive"},{name:"空崎陽奈",en:"sorasaki_hina",series:"blue_archive"},{name:"一之瀨阿斯娜",en:"ichinose_asuna",series:"blue_archive"},{name:"角楯花凜",en:"kakudate_karin",series:"blue_archive"},{name:"妃咲",en:"kisaki_(blue_archive)",series:"blue_archive"},{name:"小鳥遊星野",en:"takanashi_hoshino",series:"blue_archive"}
-                ],
-                "FGO": [
-                    {name:"Saber",en:"artoria_pendragon",series:"fate/grand_order"},{name:"瑪修",en:"mash_kyrielight",series:"fate/grand_order"},{name:"黑貞德",en:"jeanne_d'arc_(alter)_(fate)",series:"fate/grand_order"},{name:"尼祿",en:"nero_claudius",series:"fate/grand_order"},{name:"摩根",en:"morgan_(fate)",series:"fate/grand_order"},{name:"奧伯龍",en:"oberon_(fate)",series:"fate/grand_order"},{name:"高揚斯卡婭",en:"koyanskaya",series:"fate/grand_order"},{name:"斯卡哈",en:"scathach_(fate)",series:"fate/grand_order"},{name:"伊什塔爾",en:"ishtar_(fate)",series:"fate/grand_order"},{name:"艾蕾什基伽爾",en:"ereshkigal_(fate)",series:"fate/grand_order"}
-                ],
-                "碧藍航線": [
-                    {name:"企業",en:"enterprise_(azur_lane)",series:"azur_lane"},{name:"貝爾法斯特",en:"belfast_(azur_lane)",series:"azur_lane"},{name:"柴郡",en:"cheshire_(azur_lane)",series:"azur_lane"},{name:"歐根親王",en:"prinz_eugen_(azur_lane)",series:"azur_lane"},{name:"大鳳",en:"taihou_(azur_lane)",series:"azur_lane"},{name:"聖路易斯",en:"st._louis_(azur_lane)",series:"azur_lane"},{name:"布雷默頓",en:"bremerton_(azur_lane)",series:"azur_lane"},{name:"可畏",en:"formidable_(azur_lane)",series:"azur_lane"}
-                ],
-                "明日方舟": [
-                    {name:"阿米婭",en:"amiya_(arknights)",series:"arknights"},{name:"陳",en:"chen_(arknights)",series:"arknights"},{name:"史爾特爾",en:"surtr_(arknights)",series:"arknights"},{name:"能天使",en:"exusiai_(arknights)",series:"arknights"},{name:"斯卡蒂",en:"skadi_(arknights)",series:"arknights"},{name:"凱爾希",en:"kal'tsit_(arknights)",series:"arknights"}
-                ],
-                "尼爾": [
-                    {name:"2B",en:"2b_(nier:_automata)",series:"nier:_automata"},{name:"A2",en:"a2_(nier:_automata)",series:"nier:_automata"}
-                ],
-                "英雄聯盟": [
-                    {name:"金克絲",en:"jinx_(league_of_legends)",series:"league_of_legends"},{name:"阿璃",en:"ahri_(league_of_legends)",series:"league_of_legends"},{name:"拉克絲",en:"lux_(league_of_legends)",series:"league_of_legends"},{name:"阿卡莉",en:"akali_(league_of_legends)",series:"league_of_legends"},{name:"凱莎",en:"kai'sa_(league_of_legends)",series:"league_of_legends"}
-                ],
-                "鬥陣特攻": [
-                    {name:"D.Va",en:"d.va_(overwatch)",series:"overwatch"},{name:"慈悲",en:"mercy_(overwatch)",series:"overwatch"},{name:"閃光",en:"tracer_(overwatch)",series:"overwatch"},{name:"奪命女",en:"widowmaker_(overwatch)",series:"overwatch"}
-                ]
-            },
-            "宮崎駿作品": {
-                "天空之城": [
-                    {name:"希達",en:"sheeta_(laputa)",series:"laputa:_castle_in_the_sky"},{name:"巴魯",en:"pazu",series:"laputa:_castle_in_the_sky"}
-                ],
-                "龍貓": [
-                    {name:"小月",en:"satsuki_(tonari_no_totoro)",series:"tonari_no_totoro"},{name:"小梅",en:"mei_(tonari_no_totoro)",series:"tonari_no_totoro"},{name:"龍貓",en:"totoro",series:"tonari_no_totoro"}
-                ],
-                "魔女宅急便": [
-                    {name:"琪琪",en:"kiki_(majo_no_takkyuubin)",series:"majo_no_takkyuubin"}
-                ],
-                "魔法公主": [
-                    {name:"小桑",en:"san_(mononoke_hime)",series:"mononoke_hime"},{name:"阿席達卡",en:"ashitaka",series:"mononoke_hime"}
-                ],
-                "神隱少女": [
-                    {name:"千尋",en:"ogino_chihiro",series:"sen_to_chihiro_no_kamikakushi"},{name:"白龍",en:"haku_(sen_to_chihiro)",series:"sen_to_chihiro_no_kamikakushi"},{name:"無臉男",en:"kaonashi_(sen_to_chihiro)",series:"sen_to_chihiro_no_kamikakushi"}
-                ],
-                "霍爾的移動城堡": [
-                    {name:"蘇菲",en:"sophie_hatter",series:"howl_no_ugoku_shiro"},{name:"霍爾",en:"howl_(howl_no_ugoku_shiro)",series:"howl_no_ugoku_shiro"},{name:"卡西法",en:"calcifer",series:"howl_no_ugoku_shiro"}
-                ],
-                "崖上的波妞": [
-                    {name:"波妞",en:"ponyo",series:"gake_no_ue_no_ponyo"},{name:"宗介",en:"sousuke_(ponyo)",series:"gake_no_ue_no_ponyo"}
-                ],
-                "風起": [
-                    {name:"堀越二郎",en:"horikoshi_jirou",series:"kaze_tachinu"},{name:"里見菜穗子",en:"satomi_naoko",series:"kaze_tachinu"}
-                ]
-            },
-            "熱血冒險": {
-                "航海王": [
-                    {name:"魯夫",en:"monkey_d._luffy",series:"one_piece"},{name:"娜美",en:"nami_(one_piece)",series:"one_piece"},{name:"羅賓",en:"nico_robin",series:"one_piece"},{name:"漢考克",en:"boa_hancock",series:"one_piece"},{name:"大和",en:"yamato_(one_piece)",series:"one_piece"}
-                ],
-                "鬼滅之刃": [
-                    {name:"竈門炭治郎",en:"kamado_tanjirou",series:"kimetsu_no_yaiba"},{name:"竈門禰豆子",en:"kamado_nezuko",series:"kimetsu_no_yaiba"},{name:"胡蝶忍",en:"kochou_shinobu",series:"kimetsu_no_yaiba"},{name:"戀柱",en:"kanroji_mitsuri",series:"kimetsu_no_yaiba"}
-                ],
-                "鏈鋸人": [
-                    {name:"淀治",en:"denji_(chainsaw_man)",series:"chainsaw_man"},{name:"真紀真",en:"makima_(chainsaw_man)",series:"chainsaw_man"},{name:"帕瓦",en:"power_(chainsaw_man)",series:"chainsaw_man"}
-                ],
-                "咒術迴戰": [
-                    {name:"五條悟",en:"gojou_satoru",series:"jujutsu_kaisen"},{name:"虎杖悠仁",en:"itadori_yuuji",series:"jujutsu_kaisen"},{name:"釘崎野薔薇",en:"kugisaki_nobara",series:"jujutsu_kaisen"}
-                ],
-                "火影忍者": [
-                    {name:"雛田",en:"hyuuga_hinata",series:"naruto"},{name:"小櫻",en:"haruno_sakura",series:"naruto"},{name:"綱手",en:"tsunade_(naruto)",series:"naruto"}
-                ],
-                "進擊的巨人": [
-                    {name:"艾連",en:"eren_yeager",series:"shingeki_no_kyojin"},{name:"米卡莎",en:"mikasa_ackerman",series:"shingeki_no_kyojin"},{name:"里維",en:"levi_ackerman",series:"shingeki_no_kyojin"}
-                ]
-            },
-            "奇幻異世界": {
-                "葬送的芙莉蓮": [
-                    {name:"芙莉蓮",en:"frieren",series:"sousou_no_frieren"},{name:"費倫",en:"fern_(sousou_no_frieren)",series:"sousou_no_frieren"},{name:"尤貝爾",en:"ubel_(sousou_no_frieren)",series:"sousou_no_frieren"}
-                ],
-                "Re:從零開始": [
-                    {name:"愛蜜莉雅",en:"emilia_(re:zero)",series:"re:zero"},{name:"雷姆",en:"rem_(re:zero)",series:"re:zero"},{name:"拉姆",en:"ram_(re:zero)",series:"re:zero"}
-                ],
-                "美好世界": [
-                    {name:"阿克婭",en:"aqua_(konosuba)",series:"konosuba"},{name:"惠惠",en:"megumin",series:"konosuba"},{name:"達克妮絲",en:"darkness_(konosuba)",series:"konosuba"}
-                ]
-            },
-            "經典懷舊": {
-                "新世紀福音戰士": [
-                    {name:"綾波零",en:"ayanami_rei",series:"neon_genesis_evangelion"},{name:"明日香",en:"souryuu_asuka_langley",series:"neon_genesis_evangelion"},{name:"真希波",en:"makinami_mari_illustrious",series:"neon_genesis_evangelion"}
-                ],
-                "美少女戰士": [
-                    {name:"月野兔",en:"tsukino_usagi",series:"bishoujo_senshi_sailor_moon"},{name:"水野亞美",en:"mizuno_ami",series:"bishoujo_senshi_sailor_moon"},{name:"火野麗",en:"hino_rei",series:"bishoujo_senshi_sailor_moon"}
-                ],
-                "七龍珠": [
-                    {name:"孫悟空",en:"son_goku",series:"dragon_ball"},{name:"布瑪",en:"bulma",series:"dragon_ball"},{name:"人造人18號",en:"android_18",series:"dragon_ball"}
-                ]
-            },
-            "推理劇情": {
-                "名偵探柯南": [
-                    {name:"柯南",en:"edogawa_conan",series:"meitantei_conan"},{name:"毛利蘭",en:"mouri_ran",series:"meitantei_conan"},{name:"灰原哀",en:"haibara_ai",series:"meitantei_conan"},{name:"遠山和葉",en:"toyama_kazuha",series:"meitantei_conan"}
-                ],
-                "藥師少女的獨語": [
-                    {name:"貓貓",en:"maomao_(kusuriya_no_hitorigoto)",series:"kusuriya_no_hitorigoto"}
-                ]
-            }
-        };
+        // Character database will be loaded from CSV
 
         // ==================== Initialization ====================
         window.onload = function() {
             initializeApp();
             loadHistory();
             testConnection();
+            autoLoadAllFiles(); // Auto-load files on page load
         };
 
         function initializeApp() {
             // Render builtin styles
             renderBuiltinStyles();
 
-            // Initialize character database
-            appState.characterDatabase = characterDatabase;
-            initializeCharacterFilters();
+            // Character database will be loaded from CSV
 
-            // Set character database to state
-            updateCharacterFilters();
+            // Set up file upload handlers
+            document.getElementById('csvUpload').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    parseArtistCSV(event.target.result);
+                    showToast(`已載入 ${appState.customArtists.length} 個藝術家風格`, 'success');
+                };
+                reader.readAsText(file);
+            });
+
+            document.getElementById('zipUpload').addEventListener('change', async function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                if (!file.name.toLowerCase().endsWith('.zip')) {
+                    showToast('請選擇 ZIP 檔案', 'error');
+                    return;
+                }
+
+                try {
+                    if (typeof JSZip === 'undefined') {
+                        showToast('JSZip 庫未載入，請重新整理頁面後再試', 'error');
+                        return;
+                    }
+
+                    await parseZipFile(file);
+                    showToast('圖片載入完成', 'success');
+                } catch (error) {
+                    showToast('ZIP 檔案讀取失敗: ' + error.message, 'error');
+                }
+            });
 
             // Auto-test connection every 30 seconds
             setInterval(testConnection, 30000);
@@ -1252,6 +1187,155 @@
                 appState.history = JSON.parse(savedHistory);
                 renderHistory();
             }
+        }
+
+        // ==================== Auto Load Files ====================
+        async function autoLoadAllFiles() {
+            let loadCount = 0;
+
+            // Try to load character CSV
+            try {
+                const characterRes = await fetch('動漫及電玩角色.csv');
+                if (characterRes.ok) {
+                    const text = await characterRes.text();
+                    parseCharacterCSV(text);
+                    loadCount++;
+                }
+            } catch (e) {
+                console.log('Character CSV not found, manual upload required');
+            }
+
+            // Try to load Artist Tag CSV
+            try {
+                const artistRes = await fetch('Artist Tag.csv');
+                if (artistRes.ok) {
+                    const text = await artistRes.text();
+                    parseArtistCSV(text);
+                    loadCount++;
+                }
+            } catch (e) {
+                console.log('Artist Tag CSV not found, manual upload required');
+            }
+
+            // Try to load ZIP file
+            try {
+                const zipRes = await fetch('artist_style_images.zip');
+                if (zipRes.ok) {
+                    const blob = await zipRes.blob();
+                    await parseZipFile(blob);
+                    loadCount++;
+                }
+            } catch (e) {
+                console.log('ZIP file not found, manual upload required');
+            }
+
+            if (loadCount > 0) {
+                showToast(`已自動載入 ${loadCount} 個檔案`, 'success');
+            }
+        }
+
+        function parseArtistCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            appState.customArtists = [];
+
+            lines.forEach((line, index) => {
+                if (!line.trim()) return;
+
+                if (line.includes(',')) {
+                    const [name, tag] = line.split(',').map(s => s.trim());
+                    appState.customArtists.push({ name, tag, nameEn: name });
+                } else {
+                    let name = line.trim();
+                    let tag = name.replace(/^@/, '').replace(/\s+/g, '_').toLowerCase();
+                    tag = '@' + tag;
+                    appState.customArtists.push({ name, tag, nameEn: name });
+                }
+            });
+
+            if (appState.customArtists.length === 0) {
+                appState.displayedCustomArtists = [];
+            } else {
+                randomCustomStyles();
+            }
+
+            renderCustomStyles();
+        }
+
+        async function parseZipFile(blob) {
+            if (typeof JSZip === 'undefined') {
+                showToast('JSZip 庫未載入，請重新整理頁面後再試', 'error');
+                return;
+            }
+
+            const zip = new JSZip();
+            const zipContent = await zip.loadAsync(blob);
+
+            const imageFiles = Object.keys(zipContent.files).filter(name =>
+                /\.(jpg|jpeg|png|gif|webp)$/i.test(name) && !name.startsWith('__MACOSX')
+            );
+
+            for (const imagePath of imageFiles) {
+                const file = zipContent.files[imagePath];
+                if (file.dir) continue;
+
+                const imageData = await file.async('base64');
+                const ext = imagePath.split('.').pop().toLowerCase();
+                const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+                const dataUrl = `data:${mimeType};base64,${imageData}`;
+
+                const imageName = imagePath.split('/').pop().replace(/\.[^.]+$/, '');
+
+                let bestMatch = null;
+                let bestScore = 0;
+
+                appState.customArtists.forEach(artist => {
+                    const artistName = artist.name.toLowerCase().replace(/\s+/g, '');
+                    const imageNameLower = imageName.toLowerCase().replace(/\s+/g, '');
+
+                    const distance = levenshteinDistance(artistName, imageNameLower);
+                    const maxLen = Math.max(artistName.length, imageNameLower.length);
+                    const similarity = 1 - (distance / maxLen);
+
+                    if (similarity > bestScore) {
+                        bestScore = similarity;
+                        bestMatch = artist;
+                    }
+                });
+
+                if (bestMatch && bestScore > 0.7) {
+                    appState.artistImages[bestMatch.name] = dataUrl;
+                }
+            }
+
+            renderCustomStyles();
+        }
+
+        function levenshteinDistance(str1, str2) {
+            const matrix = [];
+
+            for (let i = 0; i <= str2.length; i++) {
+                matrix[i] = [i];
+            }
+
+            for (let j = 0; j <= str1.length; j++) {
+                matrix[0][j] = j;
+            }
+
+            for (let i = 1; i <= str2.length; i++) {
+                for (let j = 1; j <= str1.length; j++) {
+                    if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            matrix[i][j - 1] + 1,
+                            matrix[i - 1][j] + 1
+                        );
+                    }
+                }
+            }
+
+            return matrix[str2.length][str1.length];
         }
 
         // ==================== Style Functions ====================
@@ -1330,37 +1414,112 @@
         }
 
         // ==================== Character Functions ====================
+        // CSV Format: 類別,類型,作品中文名,角色英文名,角色中文名
+        function loadCharacterCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                parseCharacterCSV(text);
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCharacterCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            appState.characterCSVData = [];
+            appState.characterDatabase = {};
+
+            lines.forEach((line, index) => {
+                if (index === 0 && line.includes('類別')) return; // Skip header
+
+                const parts = line.split(',').map(s => s.trim());
+                if (parts.length < 5) return;
+
+                const [category, type, works, charEn, charCn] = parts;
+
+                // Store raw data
+                appState.characterCSVData.push({ category, type, works, charEn, charCn });
+
+                // Build hierarchy: {類別: {類型: {作品: [{charEn, charCn}]}}}
+                if (!appState.characterDatabase[category]) {
+                    appState.characterDatabase[category] = {};
+                }
+                if (!appState.characterDatabase[category][type]) {
+                    appState.characterDatabase[category][type] = {};
+                }
+                if (!appState.characterDatabase[category][type][works]) {
+                    appState.characterDatabase[category][type][works] = [];
+                }
+
+                appState.characterDatabase[category][type][works].push({
+                    charEn,
+                    charCn
+                });
+            });
+
+            initializeCharacterFilters();
+            showToast(`已載入 ${appState.characterCSVData.length} 個角色`, 'success');
+        }
+
         function initializeCharacterFilters() {
             const categoryFilter = document.getElementById('categoryFilter');
-            const categories = Object.keys(characterDatabase);
+            const categories = Object.keys(appState.characterDatabase);
 
-            categoryFilter.innerHTML = '<option value="">選擇作品分類</option>';
+            categoryFilter.innerHTML = '<option value="">選擇類別</option>';
             categories.forEach(category => {
                 const option = document.createElement('option');
                 option.value = category;
                 option.textContent = category;
                 categoryFilter.appendChild(option);
             });
+
+            // Reset other filters
+            document.getElementById('typeFilter').innerHTML = '<option value="">選擇類型</option>';
+            document.getElementById('worksFilter').innerHTML = '<option value="">選擇作品</option>';
+            document.getElementById('characterList').innerHTML = '<p style="color: var(--text-secondary);">請選擇類別、類型、作品以顯示角色</p>';
         }
 
-        function updateCharacterFilters() {
-            updateSeriesFilter();
-        }
-
-        function updateSeriesFilter() {
+        function updateTypeFilter() {
             const categoryFilter = document.getElementById('categoryFilter');
-            const seriesFilter = document.getElementById('seriesFilter');
+            const typeFilter = document.getElementById('typeFilter');
             const category = categoryFilter.value;
 
-            seriesFilter.innerHTML = '<option value="">選擇作品名稱</option>';
+            typeFilter.innerHTML = '<option value="">選擇類型</option>';
+            document.getElementById('worksFilter').innerHTML = '<option value="">選擇作品</option>';
 
-            if (category && characterDatabase[category]) {
-                const series = Object.keys(characterDatabase[category]);
-                series.forEach(s => {
+            if (category && appState.characterDatabase[category]) {
+                const types = Object.keys(appState.characterDatabase[category]);
+                types.forEach(t => {
                     const option = document.createElement('option');
-                    option.value = s;
-                    option.textContent = s;
-                    seriesFilter.appendChild(option);
+                    option.value = t;
+                    option.textContent = t;
+                    typeFilter.appendChild(option);
+                });
+            }
+
+            updateCharacterList();
+        }
+
+        function updateWorksFilter() {
+            const categoryFilter = document.getElementById('categoryFilter');
+            const typeFilter = document.getElementById('typeFilter');
+            const worksFilter = document.getElementById('worksFilter');
+
+            const category = categoryFilter.value;
+            const type = typeFilter.value;
+
+            worksFilter.innerHTML = '<option value="">選擇作品</option>';
+
+            if (category && type && appState.characterDatabase[category] && appState.characterDatabase[category][type]) {
+                const works = Object.keys(appState.characterDatabase[category][type]);
+                works.forEach(w => {
+                    const option = document.createElement('option');
+                    option.value = w;
+                    option.textContent = w;
+                    worksFilter.appendChild(option);
                 });
             }
 
@@ -1369,20 +1528,22 @@
 
         function updateCharacterList() {
             const categoryFilter = document.getElementById('categoryFilter');
-            const seriesFilter = document.getElementById('seriesFilter');
+            const typeFilter = document.getElementById('typeFilter');
+            const worksFilter = document.getElementById('worksFilter');
             const characterList = document.getElementById('characterList');
 
             const category = categoryFilter.value;
-            const series = seriesFilter.value;
+            const type = typeFilter.value;
+            const works = worksFilter.value;
 
             characterList.innerHTML = '';
 
-            if (!category || !series) {
-                characterList.innerHTML = '<p style="color: var(--text-secondary);">請選擇作品分類與名稱以顯示角色</p>';
+            if (!category || !type || !works) {
+                characterList.innerHTML = '<p style="color: var(--text-secondary);">請選擇類別、類型、作品以顯示角色</p>';
                 return;
             }
 
-            const characters = characterDatabase[category][series];
+            const characters = appState.characterDatabase[category][type][works];
 
             if (!characters || characters.length === 0) {
                 characterList.innerHTML = '<p style="color: var(--text-secondary);">此作品暫無角色資料</p>';
@@ -1394,10 +1555,10 @@
                 item.className = 'character-item';
                 item.onclick = () => addCharacter(char);
 
-                const displayTag = '#' + char.en;
+                const displayTag = '#' + char.charEn;
 
                 item.innerHTML = `
-                    <div class="character-name">${char.name}</div>
+                    <div class="character-name">${char.charCn}</div>
                     <div class="character-series">${displayTag}</div>
                 `;
 
@@ -1406,12 +1567,11 @@
         }
 
         function addCharacter(character) {
-            // Create proper tag format
+            // Create proper tag format from CSV data
             const charWithTag = {
-                name: character.name,
-                tag: '#' + character.en,
-                series: character.series,
-                en: character.en
+                name: character.charCn,
+                tag: '#' + character.charEn,
+                en: character.charEn
             };
 
             const exists = appState.selectedCharacters.find(c => c.tag === charWithTag.tag);
@@ -1423,7 +1583,7 @@
             appState.selectedCharacters.push(charWithTag);
             updateCharacterTags();
             updatePrompt();
-            showToast(`已加入 ${character.name}`, 'success');
+            showToast(`已加入 ${character.charCn}`, 'success');
         }
 
         function updateCharacterTags() {
