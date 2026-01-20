@@ -366,22 +366,24 @@
         }
 
         .style-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
         .style-card {
             background: var(--bg-panel);
             border: 2px solid var(--border-color);
             border-radius: 8px;
-            padding: 12px;
+            padding: 8px 12px;
             cursor: pointer;
             transition: all 0.2s;
             text-align: center;
-            display: flex;
+            display: inline-flex;
             flex-direction: column;
             position: relative;
+            width: auto;
+            min-width: fit-content;
         }
 
         .style-card-image {
@@ -804,7 +806,10 @@
             <h1>STAR - AI Art Control Panel <span class="version">v1.0</span></h1>
         </div>
         <div class="header-right">
-            <button class="file-upload-btn" onclick="autoLoadAllFiles()">⚡ 一鍵載入</button>
+            <label class="file-upload-btn">
+                上傳角色圖鑑 CSV
+                <input type="file" id="characterCsvUpload" accept=".csv" onchange="loadCharacterCSV(event)" style="display: none;">
+            </label>
             <label class="file-upload-btn">
                 上傳 Artist Tag CSV
                 <input type="file" id="csvUpload" accept=".csv" style="display: none;">
@@ -951,12 +956,6 @@
 
             <!-- Characters Tab -->
             <div class="tab-content" id="charactersTab">
-                <div class="upload-section">
-                    <label class="upload-btn">
-                        <input type="file" id="characterCsvUpload" accept=".csv" onchange="loadCharacterCSV(event)" style="display: none;">
-                        📁 上傳角色圖鑑 CSV
-                    </label>
-                </div>
                 <div class="character-filters">
                     <select id="categoryFilter" class="filter-select" onchange="updateTypeFilter()">
                         <option value="">選擇類別</option>
@@ -1124,7 +1123,15 @@
             { name: '藤本樹', tag: '@fujimoto_tatsuki', nameEn: 'Tatsuki Fujimoto', description: '鏈鋸人作者，粗獷有力的畫風，電影分鏡感' },
             { name: '吾峠呼世晴', tag: '@gotou_hitori', nameEn: 'Koyoharu Gotouge', description: '鬼滅之刃作者，和風濃厚，水彩質感' },
             { name: '芥見下々', tag: '@akutami_gege', nameEn: 'Gege Akutami', description: '咒術迴戰作者，現代感強烈的暗黑風格' },
-            { name: '大暮維人', tag: '@oh!great', nameEn: 'Oh!great', description: '天上天下作者，細膩寫實的人體結構，服飾褶皺精美' }
+            { name: '大暮維人', tag: '@oh!great', nameEn: 'Oh!great', description: '天上天下作者，細膩寫實的人體結構，服飾褶皺精美' },
+            { name: '慕夏', tag: '@alphonse_mucha', nameEn: 'Alphonse Mucha', description: '新藝術運動代表，流暢優雅的線條，華麗的裝飾圖案，充滿女性柔美氣質' },
+            { name: '畢卡索', tag: '@pablo_picasso', nameEn: 'Pablo Picasso', description: '立體主義創始人，幾何化的造型，多視角的構圖，色彩大膽強烈' },
+            { name: '梵谷', tag: '@vincent_van_gogh', nameEn: 'Vincent van Gogh', description: '後印象派大師，濃烈的色彩，富有動感的筆觸，情感強烈表現' },
+            { name: '莫內', tag: '@claude_monet', nameEn: 'Claude Monet', description: '印象派創始人，光影變化細膩，色彩明亮柔和，捕捉瞬間的光線氛圍' },
+            { name: '達利', tag: '@salvador_dali', nameEn: 'Salvador Dali', description: '超現實主義大師，夢幻奇異的意象，精細寫實的技法，象徵主義濃厚' },
+            { name: '安迪沃荷', tag: '@andy_warhol', nameEn: 'Andy Warhol', description: '普普藝術代表，鮮豔的平面色彩，重複圖案，大眾文化元素' },
+            { name: '克林姆', tag: '@gustav_klimt', nameEn: 'Gustav Klimt', description: '維也納分離派，金箔裝飾華麗，圖案繁複精美，充滿象徵意涵' },
+            { name: '蒙克', tag: '@edvard_munch', nameEn: 'Edvard Munch', description: '表現主義先驅，扭曲的線條，強烈的情緒表達，色彩象徵內心焦慮' }
         ];
 
         // ==================== Character Database ====================
@@ -1135,7 +1142,6 @@
             initializeApp();
             loadHistory();
             testConnection();
-            autoLoadAllFiles(); // Auto-load files on page load
         };
 
         function initializeApp() {
@@ -1189,51 +1195,7 @@
             }
         }
 
-        // ==================== Auto Load Files ====================
-        async function autoLoadAllFiles() {
-            let loadCount = 0;
-
-            // Try to load character CSV
-            try {
-                const characterRes = await fetch('動漫及電玩角色.csv');
-                if (characterRes.ok) {
-                    const text = await characterRes.text();
-                    parseCharacterCSV(text);
-                    loadCount++;
-                }
-            } catch (e) {
-                console.log('Character CSV not found, manual upload required');
-            }
-
-            // Try to load Artist Tag CSV
-            try {
-                const artistRes = await fetch('Artist Tag.csv');
-                if (artistRes.ok) {
-                    const text = await artistRes.text();
-                    parseArtistCSV(text);
-                    loadCount++;
-                }
-            } catch (e) {
-                console.log('Artist Tag CSV not found, manual upload required');
-            }
-
-            // Try to load ZIP file
-            try {
-                const zipRes = await fetch('artist_style_images.zip');
-                if (zipRes.ok) {
-                    const blob = await zipRes.blob();
-                    await parseZipFile(blob);
-                    loadCount++;
-                }
-            } catch (e) {
-                console.log('ZIP file not found, manual upload required');
-            }
-
-            if (loadCount > 0) {
-                showToast(`已自動載入 ${loadCount} 個檔案`, 'success');
-            }
-        }
-
+        // ==================== File Upload Helpers ====================
         function parseArtistCSV(csvText) {
             const lines = csvText.trim().split('\n');
             appState.customArtists = [];
@@ -1971,7 +1933,6 @@ Use # for characters, @ for artists. Keep prompts concise.`;
             try {
                 await submitToComfyUI(prompt, -1, 'Single Image');
                 showToast('已發送至 ComfyUI 佇列', 'success');
-                switchTab('history');
             } catch (error) {
                 console.error('Render error:', error);
                 showToast('生圖失敗: ' + error.message, 'error');
