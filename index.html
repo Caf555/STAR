@@ -502,7 +502,8 @@
         .history-image img {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain;
+            background: var(--bg-darker);
         }
 
         .history-status {
@@ -1262,7 +1263,9 @@
                 return;
             }
 
-            const btn = event.target;
+            // Find the button that triggered this function
+            const btn = document.querySelector('.generate-btn');
+            const originalText = btn.textContent;
             btn.disabled = true;
             btn.textContent = '⏳ 生成中...';
 
@@ -1325,7 +1328,7 @@ Example output:
                 alert('AI 生成失敗: ' + error.message + '\n\n請確認 LM Studio 是否正在運行於 http://localhost:1234');
             } finally {
                 btn.disabled = false;
-                btn.textContent = '🪄 AI 生成提示詞';
+                btn.textContent = originalText;
             }
         }
 
@@ -1364,7 +1367,9 @@ Example output:
                 return;
             }
 
-            const btn = event.target;
+            // Find the storyboard generate button
+            const btn = document.querySelector('#storyboardTab .generate-btn');
+            const originalText = btn.textContent;
             btn.disabled = true;
             btn.textContent = '⏳ 生成中...';
 
@@ -1444,7 +1449,7 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                 alert('分鏡生成失敗: ' + error.message);
             } finally {
                 btn.disabled = false;
-                btn.textContent = '📝 生成分鏡提示詞';
+                btn.textContent = originalText;
             }
         }
 
@@ -1478,7 +1483,9 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                 return;
             }
 
-            const btn = event.target;
+            // Find the batch render button
+            const btn = document.querySelector('#storyboardTab .render-btn');
+            const originalText = btn.textContent;
             btn.disabled = true;
             btn.textContent = '⏳ 批次生成中...';
 
@@ -1531,7 +1538,7 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                 alert('批次生成失敗: ' + error.message);
             } finally {
                 btn.disabled = false;
-                btn.textContent = '🚀 批次生圖';
+                btn.textContent = originalText;
             }
         }
 
@@ -1562,7 +1569,9 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                 return;
             }
 
-            const btn = event.target;
+            // Find the render button in left panel
+            const btn = document.querySelector('.left-panel .render-btn');
+            const originalText = btn.textContent;
             btn.disabled = true;
             btn.textContent = '⏳ 生成中...';
 
@@ -1575,7 +1584,7 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                 alert('生圖失敗: ' + error.message);
             } finally {
                 btn.disabled = false;
-                btn.textContent = '⚡ 極速生圖';
+                btn.textContent = originalText;
             }
         }
 
@@ -1960,12 +1969,33 @@ Use # for characters, @ for artists. Keep prompts concise.`;
             }
         }
 
-        // Close lightbox on Escape key
+        // Close lightbox on Escape key and arrow keys
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeLightbox();
             if (e.key === 'ArrowLeft') navigateLightbox(-1);
             if (e.key === 'ArrowRight') navigateLightbox(1);
         });
+
+        // Close lightbox when clicking on background
+        document.getElementById('lightbox').addEventListener('click', (e) => {
+            if (e.target.id === 'lightbox') {
+                closeLightbox();
+            }
+        });
+
+        // Navigate with mouse wheel in lightbox
+        document.getElementById('lightbox').addEventListener('wheel', (e) => {
+            if (document.getElementById('lightbox').classList.contains('active')) {
+                e.preventDefault();
+                if (e.deltaY > 0) {
+                    // Scroll down - next image
+                    navigateLightbox(1);
+                } else if (e.deltaY < 0) {
+                    // Scroll up - previous image
+                    navigateLightbox(-1);
+                }
+            }
+        }, { passive: false });
 
         // ==================== Tab Functions ====================
         function switchTab(tabName) {
