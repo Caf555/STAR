@@ -771,6 +771,7 @@
                 <div class="config-row">
                     <span class="config-label">大模型</span>
                     <select id="checkpointModel" class="config-input">
+                        <option value="NetaYumev35_pretrained_all_in_one.safetensors">NetaYume v35 (推薦)</option>
                         <option value="netayume_lumina.safetensors">NetaYume Lumina</option>
                     </select>
                 </div>
@@ -790,7 +791,7 @@
                         type="number"
                         id="imageWidth"
                         class="config-input"
-                        value="512"
+                        value="832"
                         min="256"
                         max="2048"
                         step="64"
@@ -800,7 +801,7 @@
                         type="number"
                         id="imageHeight"
                         class="config-input"
-                        value="1024"
+                        value="1216"
                         min="256"
                         max="2048"
                         step="64"
@@ -1584,6 +1585,9 @@ Use # for characters, @ for artists. Keep prompts concise.`;
             const height = parseInt(document.getElementById('imageHeight').value);
             const checkpoint = document.getElementById('checkpointModel').value;
 
+            // Use random seed if seed is -1
+            const actualSeed = seed === -1 ? Math.floor(Math.random() * 1000000000) : seed;
+
             // Create history entry
             const historyItem = {
                 id: Date.now(),
@@ -1593,7 +1597,7 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                 label: label,
                 width: width,
                 height: height,
-                seed: seed,
+                seed: actualSeed,
                 imageUrl: null
             };
 
@@ -1601,65 +1605,79 @@ Use # for characters, @ for artists. Keep prompts concise.`;
             saveHistory();
             renderHistory();
 
-            // Build ComfyUI workflow (simplified)
+            // Build ComfyUI workflow for NetaYume Lumina
             const workflow = {
                 prompt: {
-                    "1": {
-                        "class_type": "CheckpointLoaderSimple",
+                    "6": {
                         "inputs": {
-                            "ckpt_name": checkpoint
-                        }
-                    },
-                    "2": {
-                        "class_type": "CLIPTextEncode",
-                        "inputs": {
-                            "text": prompt,
-                            "clip": ["1", 1]
-                        }
-                    },
-                    "3": {
-                        "class_type": "KSampler",
-                        "inputs": {
-                            "seed": seed,
-                            "steps": 20,
-                            "cfg": 7.0,
+                            "seed": actualSeed,
+                            "steps": 25,
+                            "cfg": 4.5,
                             "sampler_name": "euler",
-                            "scheduler": "normal",
-                            "denoise": 1.0,
-                            "model": ["1", 0],
-                            "positive": ["2", 0],
-                            "negative": ["7", 0],
-                            "latent_image": ["5", 0]
-                        }
+                            "scheduler": "simple",
+                            "denoise": 1,
+                            "model": ["41", 0],
+                            "positive": ["39", 0],
+                            "negative": ["42", 0],
+                            "latent_image": ["13", 0]
+                        },
+                        "class_type": "KSampler"
                     },
-                    "5": {
-                        "class_type": "EmptyLatentImage",
+                    "9": {
+                        "inputs": {
+                            "filename_prefix": "NetaYume",
+                            "images": ["43", 0]
+                        },
+                        "class_type": "SaveImage"
+                    },
+                    "13": {
                         "inputs": {
                             "width": width,
                             "height": height,
                             "batch_size": 1
-                        }
+                        },
+                        "class_type": "EmptySD3LatentImage"
                     },
-                    "7": {
-                        "class_type": "CLIPTextEncode",
+                    "37": {
                         "inputs": {
-                            "text": "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality",
-                            "clip": ["1", 1]
-                        }
+                            "value": prompt
+                        },
+                        "class_type": "PrimitiveStringMultiline"
                     },
-                    "8": {
-                        "class_type": "VAEDecode",
+                    "38": {
                         "inputs": {
-                            "samples": ["3", 0],
-                            "vae": ["1", 2]
-                        }
+                            "string_a": "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start>",
+                            "string_b": ["37", 0],
+                            "delimiter": " "
+                        },
+                        "class_type": "StringConcatenate"
                     },
-                    "9": {
-                        "class_type": "SaveImage",
+                    "39": {
                         "inputs": {
-                            "filename_prefix": "STAR",
-                            "images": ["8", 0]
-                        }
+                            "text": ["38", 0],
+                            "clip": ["41", 1]
+                        },
+                        "class_type": "CLIPTextEncode"
+                    },
+                    "41": {
+                        "inputs": {
+                            "ckpt_name": checkpoint
+                        },
+                        "class_type": "CheckpointLoaderSimple"
+                    },
+                    "42": {
+                        "inputs": {
+                            "text": "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> blurry, worst quality, low quality, deformed hands, bad anatomy, extra limbs, poorly drawn face, mutated, extra eyes, bad proportions",
+                            "clip": ["41", 1]
+                        },
+                        "class_type": "CLIPTextEncode"
+                    },
+                    "43": {
+                        "inputs": {
+                            "samples": ["6", 0],
+                            "vae": ["41", 2]
+                        },
+                        "class_type": "VAEDecode"
                     }
                 }
             };
@@ -1672,7 +1690,10 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                     body: JSON.stringify(workflow)
                 });
 
-                if (!response.ok) throw new Error('ComfyUI 提交失敗');
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`ComfyUI 提交失敗: ${response.status} ${errorText}`);
+                }
 
                 const data = await response.json();
                 historyItem.promptId = data.prompt_id;
@@ -1681,7 +1702,9 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                 pollComfyUIResult(historyItem.id, data.prompt_id);
 
             } catch (error) {
+                console.error('Submit to ComfyUI error:', error);
                 historyItem.status = 'failed';
+                historyItem.error = error.message;
                 saveHistory();
                 renderHistory();
                 throw error;
@@ -1771,11 +1794,15 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                 const statusText = item.status === 'success' ? '完成' :
                                  item.status === 'failed' ? '失敗' : '佇列中';
 
+                const errorInfo = item.status === 'failed' && item.error ?
+                    `<div style="padding: 8px; font-size: 11px; color: var(--accent-red);">${item.error}</div>` : '';
+
                 historyItem.innerHTML = `
                     <div class="history-image" onclick="openLightbox(${index})">
                         ${item.imageUrl ? `<img src="${item.imageUrl}" alt="Generated">` : '⏳'}
                         <div class="history-status ${statusClass}">${statusText}</div>
                     </div>
+                    ${errorInfo}
                     <div class="history-actions">
                         ${item.imageUrl ? `<button class="action-btn" onclick="upscaleImage(${index})">🔍 放大</button>` : ''}
                         <button class="action-btn" onclick="deleteHistory(${index})">🗑️ 刪除</button>
@@ -1801,7 +1828,106 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                 return;
             }
 
-            alert('放大功能需要下載圖片並上傳至 ComfyUI Input 資料夾，然後執行放大流程。\n此功能需要完整的 ComfyUI API 整合。');
+            if (!confirm('確定要放大此圖片嗎？')) return;
+
+            const url = document.getElementById('comfyUrl').value;
+            const upscaleModel = document.getElementById('upscaleModel').value;
+
+            try {
+                // Step 1: Download the image
+                const imageResponse = await fetch(item.imageUrl);
+                const imageBlob = await imageResponse.blob();
+
+                // Step 2: Upload to ComfyUI input folder
+                const formData = new FormData();
+                const filename = `upscale_${Date.now()}.png`;
+                formData.append('image', imageBlob, filename);
+                formData.append('overwrite', 'true');
+
+                const uploadResponse = await fetch(`${url}/upload/image`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!uploadResponse.ok) {
+                    throw new Error('圖片上傳失敗');
+                }
+
+                const uploadData = await uploadResponse.json();
+                const uploadedFilename = uploadData.name || filename;
+
+                // Step 3: Submit upscale workflow
+                const workflow = {
+                    prompt: {
+                        "60": {
+                            "inputs": {
+                                "image": uploadedFilename,
+                                "upload": "image"
+                            },
+                            "class_type": "LoadImage"
+                        },
+                        "50": {
+                            "inputs": {
+                                "model_name": upscaleModel
+                            },
+                            "class_type": "UpscaleModelLoader"
+                        },
+                        "51": {
+                            "inputs": {
+                                "upscale_model": ["50", 0],
+                                "image": ["60", 0]
+                            },
+                            "class_type": "ImageUpscaleWithModel"
+                        },
+                        "9": {
+                            "inputs": {
+                                "filename_prefix": "NetaYume_HD",
+                                "images": ["51", 0]
+                            },
+                            "class_type": "SaveImage"
+                        }
+                    }
+                };
+
+                const response = await fetch(`${url}/prompt`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(workflow)
+                });
+
+                if (!response.ok) {
+                    throw new Error('放大工作流提交失敗');
+                }
+
+                const data = await response.json();
+
+                // Create new history entry for upscaled image
+                const historyItem = {
+                    id: Date.now(),
+                    prompt: item.prompt + ' [Upscaled]',
+                    status: 'queue',
+                    timestamp: new Date().toLocaleString('zh-TW'),
+                    label: item.label + ' (放大)',
+                    width: item.width * 4,
+                    height: item.height * 4,
+                    seed: item.seed,
+                    imageUrl: null,
+                    promptId: data.prompt_id
+                };
+
+                appState.history.unshift(historyItem);
+                saveHistory();
+                renderHistory();
+
+                // Start polling for result
+                pollComfyUIResult(historyItem.id, data.prompt_id);
+
+                alert('已發送放大任務至 ComfyUI！請查看歷史紀錄標籤');
+
+            } catch (error) {
+                console.error('Upscale error:', error);
+                alert('放大失敗: ' + error.message);
+            }
         }
 
         // ==================== Lightbox Functions ====================
