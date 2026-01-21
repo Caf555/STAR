@@ -902,13 +902,22 @@
                     </select>
                 </div>
 
+                <div style="margin-bottom: 12px;">
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+                        <button class="btn" onclick="setImageSize(512, 1024)" style="font-size: 12px; padding: 6px 12px;">512×1024</button>
+                        <button class="btn" onclick="setImageSize(768, 1024)" style="font-size: 12px; padding: 6px 12px;">768×1024</button>
+                        <button class="btn" onclick="setImageSize(832, 1216)" style="font-size: 12px; padding: 6px 12px;">832×1216</button>
+                        <button class="btn" onclick="setImageSize(1024, 1024)" style="font-size: 12px; padding: 6px 12px;">1024×1024</button>
+                        <button class="btn" onclick="swapImageSize()" style="font-size: 12px; padding: 6px 12px;">🔄 寬高互換</button>
+                    </div>
+                </div>
                 <div class="config-row">
                     <span class="config-label">寬度</span>
                     <input
                         type="number"
                         id="imageWidth"
                         class="config-input"
-                        value="832"
+                        value="512"
                         min="256"
                         max="2048"
                         step="64"
@@ -918,7 +927,7 @@
                         type="number"
                         id="imageHeight"
                         class="config-input"
-                        value="1216"
+                        value="1024"
                         min="256"
                         max="2048"
                         step="64"
@@ -997,9 +1006,23 @@
                     <button class="btn" onclick="importFromMainPrompt()">📥 從主提示詞導入</button>
                 </div>
 
-                <!-- Step 2: Fixed Items -->
+                <!-- Step 2: Story Description -->
                 <div class="storyboard-step">
-                    <div class="step-title">步驟 2：固定項目</div>
+                    <div class="step-title">步驟 2：劇情簡述</div>
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 8px;">
+                        描述畫面安排及各分鏡變動規則
+                    </p>
+                    <textarea
+                        id="storyDescription"
+                        class="ai-input-area"
+                        style="min-height: 100px;"
+                        placeholder="例如：魔法少女從日常生活變身戰鬥的過程，第一張為日常服裝，第二張開始變身，第三張完成變身，第四張戰鬥姿態..."
+                    ></textarea>
+                </div>
+
+                <!-- Step 3: Fixed Items -->
+                <div class="storyboard-step">
+                    <div class="step-title">步驟 3：固定項目</div>
                     <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 8px;">
                         輸入預期不變的項目，配合劇情簡述送至 LM Studio 生成
                     </p>
@@ -1022,9 +1045,9 @@
                     </div>
                 </div>
 
-                <!-- Step 3: Variable Items -->
+                <!-- Step 4: Variable Items -->
                 <div class="storyboard-step">
-                    <div class="step-title">步驟 3：變動項目</div>
+                    <div class="step-title">步驟 4：變動項目</div>
                     <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 8px;">
                         輸入預期變動的項目，配合劇情簡述生成指定數量的提示詞
                     </p>
@@ -1051,20 +1074,6 @@
                     <div style="margin-top: 12px;" id="variableItemsContainer">
                         <p style="color: var(--text-secondary);">變動項目將在此顯示，點擊可編輯</p>
                     </div>
-                </div>
-
-                <!-- Step 4: Story Description -->
-                <div class="storyboard-step">
-                    <div class="step-title">步驟 4：劇情簡述</div>
-                    <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 8px;">
-                        描述畫面安排及各分鏡變動規則
-                    </p>
-                    <textarea
-                        id="storyDescription"
-                        class="ai-input-area"
-                        style="min-height: 100px;"
-                        placeholder="例如：魔法少女從日常生活變身戰鬥的過程，第一張為日常服裝，第二張開始變身，第三張完成變身，第四張戰鬥姿態..."
-                    ></textarea>
                 </div>
 
                 <!-- Step 5: Batch Render -->
@@ -1097,7 +1106,7 @@
                     <div style="margin-top: 12px; padding: 12px; background: var(--bg-darker); border-radius: 6px;">
                         <div class="step-title" style="font-size: 14px; margin-bottom: 8px;">組合預覽</div>
                         <div id="storyboardPreview" style="font-size: 12px; color: var(--text-secondary);">
-                            完成上述步驟後，將自動組合為：風格及主體 + 變動項目 + 固定項目
+                            完成上述步驟後，將自動組合為：風格及主體 + 變動項目 + 固定項目 + 高畫質提示詞
                         </div>
                     </div>
 
@@ -1886,6 +1895,23 @@ Example output:
             }
         }
 
+        // Set image size to preset dimensions
+        function setImageSize(width, height) {
+            document.getElementById('imageWidth').value = width;
+            document.getElementById('imageHeight').value = height;
+            showToast(`已設定尺寸：${width}×${height}`, 'success');
+        }
+
+        // Swap width and height values
+        function swapImageSize() {
+            const widthInput = document.getElementById('imageWidth');
+            const heightInput = document.getElementById('imageHeight');
+            const tempWidth = widthInput.value;
+            widthInput.value = heightInput.value;
+            heightInput.value = tempWidth;
+            showToast(`已互換寬高：${widthInput.value}×${heightInput.value}`, 'success');
+        }
+
         // ==================== New Storyboard Functions ====================
         function importFromMainPrompt() {
             const mainPrompt = document.getElementById('promptEditor').value;
@@ -2111,13 +2137,14 @@ Output format (STRICT):
             const previewDiv = document.getElementById('storyboardPreview');
 
             if (!appState.storyboardData || !appState.storyboardData.variableItems || appState.storyboardData.variableItems.length === 0) {
-                previewDiv.innerHTML = '<span style="color: var(--text-secondary);">完成上述步驟後，將自動組合為：風格及主體 + 變動項目 + 固定項目</span>';
+                previewDiv.innerHTML = '<span style="color: var(--text-secondary);">完成上述步驟後，將自動組合為：風格及主體 + 變動項目 + 固定項目 + 高畫質提示詞</span>';
                 return;
             }
 
+            const qualityTags = 'masterpiece, best quality, ultra-detailed, 8k, high resolution, sharp focus';
             let previewHTML = '';
             appState.storyboardData.variableItems.forEach((varItem, index) => {
-                const fullPrompt = [styleSubject, varItem, fixedItems].filter(p => p).join(', ');
+                const fullPrompt = [styleSubject, varItem, fixedItems, qualityTags].filter(p => p).join(', ');
                 previewHTML += `
                     <div style="margin-bottom: 8px; padding: 8px; background: var(--bg-panel); border-radius: 4px;">
                         <strong>第 ${index + 1} 張：</strong>
@@ -2165,8 +2192,9 @@ Output format (STRICT):
 
                     const variableItem = appState.storyboardData.variableItems[i];
 
-                    // Combine: style+subject + variable + fixed
-                    const fullPrompt = [styleSubject, variableItem, fixedItems]
+                    // Combine: style+subject + variable + fixed + quality tags
+                    const qualityTags = 'masterpiece, best quality, ultra-detailed, 8k, high resolution, sharp focus';
+                    const fullPrompt = [styleSubject, variableItem, fixedItems, qualityTags]
                         .filter(p => p)
                         .join(', ');
 
