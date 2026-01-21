@@ -1999,8 +1999,14 @@ Requirements:
 3. Follow the story progression naturally
 4. Use anime/illustration terminology
 5. Be specific about actions, expressions, poses, or scene changes
-6. Output format: One variation per line, numbered 1. 2. 3. etc.
-7. Each variation should be a complete, natural language description`;
+6. Keep each variation concise (under 100 characters)
+7. Output ONLY the numbered list, no explanations or introductions
+
+Output format (STRICT):
+1. [variation 1]
+2. [variation 2]
+3. [variation 3]
+...and so on`;
 
                 const response = await fetch(appState.lmStudioUrl, {
                     method: 'POST',
@@ -2008,7 +2014,7 @@ Requirements:
                     body: JSON.stringify({
                         messages: [
                             { role: 'system', content: systemPrompt },
-                            { role: 'user', content: `Generate ${frameCount} variable element prompts following the story.` }
+                            { role: 'user', content: `Generate ${frameCount} variable element prompts following the story. Output ONLY the numbered list.` }
                         ],
                         temperature: 0.8,
                         max_tokens: 500
@@ -2018,17 +2024,37 @@ Requirements:
                 const data = await response.json();
                 const result = data.choices[0].message.content.trim();
 
-                // Parse the numbered list
-                const lines = result.split('\n').filter(line => line.trim());
+                // Parse the numbered list with stricter regex
                 const variations = [];
+                const lines = result.split('\n');
 
-                lines.forEach(line => {
-                    // Remove numbering (1. 2. etc.) and clean up
-                    const cleaned = line.replace(/^\d+\.\s*/, '').trim();
-                    if (cleaned) {
-                        variations.push(cleaned);
+                for (let line of lines) {
+                    line = line.trim();
+                    // Only match lines that start with number followed by dot and space
+                    const match = line.match(/^(\d+)\.\s+(.+)$/);
+                    if (match) {
+                        const itemNumber = parseInt(match[1]);
+                        const itemText = match[2].trim();
+
+                        // Filter out lines that are too long (likely explanatory text)
+                        if (itemText.length > 0 && itemText.length < 300) {
+                            variations.push(itemText);
+                        }
                     }
-                });
+
+                    // Stop if we've collected enough items
+                    if (variations.length >= frameCount) {
+                        break;
+                    }
+                }
+
+                // Ensure we have exactly frameCount items (or warn if less)
+                if (variations.length < frameCount) {
+                    showToast(`警告：僅生成 ${variations.length} 個項目（預期 ${frameCount} 個）`, 'warning', 4000);
+                } else if (variations.length > frameCount) {
+                    // Trim to exact count
+                    variations.length = frameCount;
+                }
 
                 // Store in appState
                 if (!appState.storyboardData) {
@@ -2782,11 +2808,16 @@ Use # for characters, @ for artists. Keep prompts concise.`;
             }
         }
 
-        // Close lightbox on Escape key and arrow keys
+        // Close lightbox on Escape key and arrow keys (only when lightbox is active)
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeLightbox();
-            if (e.key === 'ArrowLeft') navigateLightbox(-1);
-            if (e.key === 'ArrowRight') navigateLightbox(1);
+            const lightbox = document.getElementById('lightbox');
+            const isLightboxActive = lightbox && lightbox.classList.contains('active');
+
+            if (isLightboxActive) {
+                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'ArrowLeft') navigateLightbox(-1);
+                if (e.key === 'ArrowRight') navigateLightbox(1);
+            }
         });
 
         // Close lightbox when clicking on background
