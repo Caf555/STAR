@@ -2158,7 +2158,11 @@ Output format (STRICT):
                 let currentSeed = appState.seedMode === 'fixed' ?
                     parseInt(document.getElementById('seedValue').value) : -1;
 
+                // Send each frame sequentially with progress indicator
                 for (let i = 0; i < frameCount; i++) {
+                    // Update button text to show progress
+                    btn.textContent = `⏳ 發送中 ${i + 1}/${frameCount}...`;
+
                     const variableItem = appState.storyboardData.variableItems[i];
 
                     // Combine: style+subject + variable + fixed
@@ -2185,11 +2189,16 @@ Output format (STRICT):
                         frameSeed = currentSeed;
                     }
 
+                    // Send to ComfyUI and wait for completion
                     await submitToComfyUI(fullPrompt, frameSeed, `Storyboard ${i + 1}/${frameCount}`);
-                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                    // Wait 1.5 seconds before sending next frame to maintain order
+                    if (i < frameCount - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                    }
                 }
 
-                showToast(`已發送 ${frameCount} 張圖片至 ComfyUI`, 'success');
+                showToast(`已依序發送 ${frameCount} 張圖片至 ComfyUI`, 'success');
             } catch (error) {
                 showToast('批次生圖失敗: ' + error.message, 'error');
             } finally {
