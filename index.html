@@ -858,6 +858,7 @@
 
                 <!-- Editor Buttons -->
                 <div class="button-group">
+                    <button class="btn" onclick="addQualityTags()">✨ 高畫質</button>
                     <button class="btn" onclick="clearPrompt()">🗑️ 清空</button>
                     <button class="btn" onclick="copyPrompt()">📋 複製</button>
                 </div>
@@ -981,12 +982,54 @@
 
             <!-- Storyboard Tab -->
             <div class="tab-content" id="storyboardTab">
-                <!-- Step 1: Planning -->
+                <!-- Step 1: Style and Subject -->
                 <div class="storyboard-step">
-                    <div class="step-title">步驟 1：規劃劇本</div>
+                    <div class="step-title">步驟 1：風格及主體</div>
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 8px;">
+                        可加入風格及角色標籤，或自行輸入提示詞
+                    </p>
+                    <textarea
+                        id="styleSubjectInput"
+                        class="ai-input-area"
+                        style="min-height: 80px;"
+                        placeholder="例如：@shinkai_makoto, #hatsune_miku, anime style, detailed background..."
+                    ></textarea>
+                    <button class="btn" onclick="importFromMainPrompt()">📥 從主提示詞導入</button>
+                </div>
 
+                <!-- Step 2: Fixed Items -->
+                <div class="storyboard-step">
+                    <div class="step-title">步驟 2：固定項目</div>
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 8px;">
+                        輸入預期不變的項目，配合劇情簡述送至 LM Studio 生成
+                    </p>
+                    <textarea
+                        id="fixedItemsInput"
+                        class="ai-input-area"
+                        style="min-height: 80px;"
+                        placeholder="例如：室內場景、溫暖光線、坐在椅子上..."
+                    ></textarea>
+                    <button class="generate-btn" onclick="generateFixedItems()">
+                        🤖 生成固定項目
+                    </button>
+                    <div style="margin-top: 12px;">
+                        <textarea
+                            id="fixedItemsResult"
+                            class="ai-input-area"
+                            style="min-height: 80px; background: var(--bg-darker);"
+                            placeholder="生成的固定項目將在此顯示，可編輯修改..."
+                        ></textarea>
+                    </div>
+                </div>
+
+                <!-- Step 3: Variable Items -->
+                <div class="storyboard-step">
+                    <div class="step-title">步驟 3：變動項目</div>
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 8px;">
+                        輸入預期變動的項目，配合劇情簡述生成指定數量的提示詞
+                    </p>
                     <div class="config-row" style="margin-bottom: 12px;">
-                        <span class="config-label">張數</span>
+                        <span class="config-label">分鏡數量</span>
                         <input
                             type="number"
                             id="frameCount"
@@ -996,42 +1039,37 @@
                             max="10"
                         >
                     </div>
-
                     <textarea
-                        id="storyInput"
+                        id="variableItemsInput"
+                        class="ai-input-area"
+                        style="min-height: 80px;"
+                        placeholder="例如：表情、動作、服裝變化..."
+                    ></textarea>
+                    <button class="generate-btn" onclick="generateVariableItems()">
+                        🤖 生成變動項目
+                    </button>
+                    <div style="margin-top: 12px;" id="variableItemsContainer">
+                        <p style="color: var(--text-secondary);">變動項目將在此顯示，點擊可編輯</p>
+                    </div>
+                </div>
+
+                <!-- Step 4: Story Description -->
+                <div class="storyboard-step">
+                    <div class="step-title">步驟 4：劇情簡述</div>
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 8px;">
+                        描述畫面安排及各分鏡變動規則
+                    </p>
+                    <textarea
+                        id="storyDescription"
                         class="ai-input-area"
                         style="min-height: 100px;"
-                        placeholder="輸入劇本基礎指令，例如：魔法少女從日常生活變身戰鬥的過程..."
+                        placeholder="例如：魔法少女從日常生活變身戰鬥的過程，第一張為日常服裝，第二張開始變身，第三張完成變身，第四張戰鬥姿態..."
                     ></textarea>
-
-                    <div class="mode-selector">
-                        <button class="mode-btn active" data-mode="stacking" onclick="selectMode(this)">
-                            疊加 (Stacking)
-                        </button>
-                        <button class="mode-btn" data-mode="event" onclick="selectMode(this)">
-                            事件 (Event)
-                        </button>
-                        <button class="mode-btn" data-mode="story" onclick="selectMode(this)">
-                            劇情 (Story)
-                        </button>
-                    </div>
-
-                    <button class="generate-btn" onclick="generateStoryboard()">
-                        📝 生成分鏡提示詞
-                    </button>
                 </div>
 
-                <!-- Step 2: Generated Frames -->
+                <!-- Step 5: Batch Render -->
                 <div class="storyboard-step">
-                    <div class="step-title">步驟 2：分鏡提示詞</div>
-                    <div class="storyboard-frames" id="storyboardFrames">
-                        <p style="color: var(--text-secondary);">分鏡提示詞將在此顯示</p>
-                    </div>
-                </div>
-
-                <!-- Step 3: Batch Render -->
-                <div class="storyboard-step">
-                    <div class="step-title">步驟 3：批次發送</div>
+                    <div class="step-title">步驟 5：批次發送</div>
 
                     <div class="mode-selector">
                         <button class="mode-btn active" data-seed="first-random" onclick="selectSeedMode(this)">
@@ -1056,7 +1094,14 @@
                         >
                     </div>
 
-                    <button class="render-btn" onclick="batchRender()">
+                    <div style="margin-top: 12px; padding: 12px; background: var(--bg-darker); border-radius: 6px;">
+                        <div class="step-title" style="font-size: 14px; margin-bottom: 8px;">組合預覽</div>
+                        <div id="storyboardPreview" style="font-size: 12px; color: var(--text-secondary);">
+                            完成上述步驟後，將自動組合為：風格及主體 + 變動項目 + 固定項目
+                        </div>
+                    </div>
+
+                    <button class="render-btn" onclick="batchRenderNew()" style="margin-top: 12px;">
                         🚀 批次生圖
                     </button>
                 </div>
@@ -1713,6 +1758,28 @@
             editor.select();
             document.execCommand('copy');
             showToast('已複製到剪貼簿', 'success');
+        }
+
+        function addQualityTags() {
+            const editor = document.getElementById('promptEditor');
+            const qualityTags = 'masterpiece, best quality, ultra-detailed, 8k, high resolution, sharp focus';
+
+            let currentPrompt = editor.value.trim();
+
+            // Check if quality tags already exist
+            if (currentPrompt.includes('masterpiece') || currentPrompt.includes('best quality')) {
+                showToast('高畫質提示詞已存在', 'info');
+                return;
+            }
+
+            // Add quality tags at the end
+            if (currentPrompt) {
+                editor.value = currentPrompt + ', ' + qualityTags;
+            } else {
+                editor.value = qualityTags;
+            }
+
+            showToast('已添加高畫質提示詞', 'success');
         }
 
         // ==================== AI Generation ====================
