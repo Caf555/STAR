@@ -1368,10 +1368,13 @@
             const editor = document.getElementById('promptEditor');
             let currentPrompt = editor.value;
 
+            // Escape special regex characters in tag
+            const escapedTag = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
             // Remove tag with various formats: "tag, ", ", tag, ", ", tag"
-            currentPrompt = currentPrompt.replace(new RegExp(tag + ',\\s*', 'g'), '');
-            currentPrompt = currentPrompt.replace(new RegExp(',\\s*' + tag, 'g'), '');
-            currentPrompt = currentPrompt.replace(new RegExp(tag, 'g'), '');
+            currentPrompt = currentPrompt.replace(new RegExp(escapedTag + ',\\s*', 'g'), '');
+            currentPrompt = currentPrompt.replace(new RegExp(',\\s*' + escapedTag, 'g'), '');
+            currentPrompt = currentPrompt.replace(new RegExp(escapedTag, 'g'), '');
 
             // Clean up multiple commas and spaces
             currentPrompt = currentPrompt.replace(/,\s*,/g, ',');
