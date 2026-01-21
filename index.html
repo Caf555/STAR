@@ -970,6 +970,10 @@
                         <option value="">選擇作品</option>
                     </select>
                 </div>
+                <div style="margin: 12px 0; display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="includeSeriesTag" checked>
+                    <label for="includeSeriesTag" style="color: var(--text-primary); cursor: pointer;">包含作品英文名稱標籤</label>
+                </div>
                 <div class="character-list" id="characterList">
                     <p style="color: var(--text-secondary);">請上傳角色圖鑑 CSV 或選擇類別、類型、作品以顯示角色</p>
                 </div>
@@ -1420,7 +1424,7 @@
         }
 
         // ==================== Character Functions ====================
-        // CSV Format: 類別,類型,作品中文名,角色英文名,角色中文名
+        // CSV Format: 類別,類型,作品中文名,作品英文名,角色英文名,角色中文名
         function loadCharacterCSV(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1442,25 +1446,26 @@
                 if (index === 0 && line.includes('類別')) return; // Skip header
 
                 const parts = line.split(',').map(s => s.trim());
-                if (parts.length < 5) return;
+                if (parts.length < 6) return;
 
-                const [category, type, works, charEn, charCn] = parts;
+                const [category, type, worksCn, worksEn, charEn, charCn] = parts;
 
                 // Store raw data
-                appState.characterCSVData.push({ category, type, works, charEn, charCn });
+                appState.characterCSVData.push({ category, type, worksCn, worksEn, charEn, charCn });
 
-                // Build hierarchy: {類別: {類型: {作品: [{charEn, charCn}]}}}
+                // Build hierarchy: {類別: {類型: {作品中文名: [{worksEn, charEn, charCn}]}}}
                 if (!appState.characterDatabase[category]) {
                     appState.characterDatabase[category] = {};
                 }
                 if (!appState.characterDatabase[category][type]) {
                     appState.characterDatabase[category][type] = {};
                 }
-                if (!appState.characterDatabase[category][type][works]) {
-                    appState.characterDatabase[category][type][works] = [];
+                if (!appState.characterDatabase[category][type][worksCn]) {
+                    appState.characterDatabase[category][type][worksCn] = [];
                 }
 
-                appState.characterDatabase[category][type][works].push({
+                appState.characterDatabase[category][type][worksCn].push({
+                    worksEn,
                     charEn,
                     charCn
                 });
@@ -1573,11 +1578,16 @@
         }
 
         function addCharacter(character) {
+            // Check if should include series tag
+            const includeSeriesTag = document.getElementById('includeSeriesTag').checked;
+
             // Create proper tag format from CSV data
             const charWithTag = {
                 name: character.charCn,
                 tag: '#' + character.charEn,
-                en: character.charEn
+                seriesTag: includeSeriesTag ? '#' + character.worksEn : null,
+                en: character.charEn,
+                seriesEn: character.worksEn
             };
 
             const exists = appState.selectedCharacters.find(c => c.tag === charWithTag.tag);
@@ -1588,7 +1598,14 @@
 
             appState.selectedCharacters.push(charWithTag);
             updateCharacterTags();
-            insertCharacterTagAtCursor(charWithTag.tag);
+
+            // Insert tags at cursor (series tag first if enabled, then character tag)
+            if (includeSeriesTag && charWithTag.seriesTag) {
+                insertCharacterTagAtCursor(charWithTag.seriesTag + ', ' + charWithTag.tag);
+            } else {
+                insertCharacterTagAtCursor(charWithTag.tag);
+            }
+
             showToast(`已加入 ${character.charCn}`, 'success');
         }
 
@@ -1636,18 +1653,26 @@
             appState.selectedCharacters.forEach(char => {
                 const tag = document.createElement('div');
                 tag.className = 'tag character-tag';
+                const displayTag = char.seriesTag ? `${char.seriesTag}, ${char.tag}` : char.tag;
                 tag.innerHTML = `
-                    <span>${char.name} ${char.tag}</span>
-                    <span class="tag-remove" onclick="removeCharacter('${char.tag}')">✕</span>
+                    <span>${char.name} ${displayTag}</span>
+                    <span class="tag-remove" onclick="removeCharacter('${char.tag}', '${char.seriesTag || ''}')">✕</span>
                 `;
                 container.appendChild(tag);
             });
         }
 
-        function removeCharacter(tagValue) {
+        function removeCharacter(tagValue, seriesTagValue) {
             appState.selectedCharacters = appState.selectedCharacters.filter(c => c.tag !== tagValue);
             updateCharacterTags();
+
+            // Remove character tag
             removeTagFromPrompt(tagValue);
+
+            // Remove series tag if it exists
+            if (seriesTagValue && seriesTagValue !== 'null') {
+                removeTagFromPrompt(seriesTagValue);
+            }
         }
 
         // ==================== Prompt Functions ====================
