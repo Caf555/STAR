@@ -1330,17 +1330,55 @@
         }
 
         function toggleStyle(style) {
+            const editor = document.getElementById('promptEditor');
             const index = appState.selectedStyles.findIndex(s => s.tag === style.tag);
 
             if (index >= 0) {
+                // Remove style
                 appState.selectedStyles.splice(index, 1);
+                // Remove tag from prompt
+                removeTagFromPrompt(style.tag);
             } else {
+                // Add style
                 appState.selectedStyles.push(style);
+                // Insert tag at the beginning of prompt
+                insertStyleTagAtStart(style.tag);
             }
 
             updateStyleTags();
             renderBuiltinStyles();
-            updatePrompt();
+        }
+
+        function insertStyleTagAtStart(tag) {
+            const editor = document.getElementById('promptEditor');
+            let currentPrompt = editor.value.trim();
+
+            // Check if tag already exists
+            if (currentPrompt.includes(tag)) return;
+
+            // Insert at the beginning
+            if (currentPrompt) {
+                editor.value = tag + ', ' + currentPrompt;
+            } else {
+                editor.value = tag + ', ';
+            }
+        }
+
+        function removeTagFromPrompt(tag) {
+            const editor = document.getElementById('promptEditor');
+            let currentPrompt = editor.value;
+
+            // Remove tag with various formats: "tag, ", ", tag, ", ", tag"
+            currentPrompt = currentPrompt.replace(new RegExp(tag + ',\\s*', 'g'), '');
+            currentPrompt = currentPrompt.replace(new RegExp(',\\s*' + tag, 'g'), '');
+            currentPrompt = currentPrompt.replace(new RegExp(tag, 'g'), '');
+
+            // Clean up multiple commas and spaces
+            currentPrompt = currentPrompt.replace(/,\s*,/g, ',');
+            currentPrompt = currentPrompt.replace(/^\s*,\s*/, '');
+            currentPrompt = currentPrompt.replace(/,\s*$/, '');
+
+            editor.value = currentPrompt.trim();
         }
 
         function updateStyleTags() {
@@ -1362,7 +1400,7 @@
             appState.selectedStyles = appState.selectedStyles.filter(s => s.tag !== tagValue);
             updateStyleTags();
             renderBuiltinStyles();
-            updatePrompt();
+            removeTagFromPrompt(tagValue);
         }
 
         function randomStyle() {
@@ -1547,8 +1585,45 @@
 
             appState.selectedCharacters.push(charWithTag);
             updateCharacterTags();
-            updatePrompt();
+            insertCharacterTagAtCursor(charWithTag.tag);
             showToast(`已加入 ${character.charCn}`, 'success');
+        }
+
+        function insertCharacterTagAtCursor(tag) {
+            const editor = document.getElementById('promptEditor');
+
+            // Check if tag already exists
+            if (editor.value.includes(tag)) return;
+
+            // Get cursor position
+            const cursorPos = editor.selectionStart;
+            const textBefore = editor.value.substring(0, cursorPos);
+            const textAfter = editor.value.substring(cursorPos);
+
+            // Insert tag at cursor position
+            if (cursorPos === 0) {
+                // At the beginning
+                if (textAfter) {
+                    editor.value = tag + ', ' + textAfter;
+                } else {
+                    editor.value = tag + ', ';
+                }
+            } else {
+                // In the middle or at the end
+                const needsCommaBefore = textBefore.trim() && !textBefore.trim().endsWith(',');
+                const needsCommaAfter = textAfter.trim() && !textAfter.trim().startsWith(',');
+
+                let insertion = tag;
+                if (needsCommaBefore) insertion = ', ' + insertion;
+                if (needsCommaAfter) insertion = insertion + ', ';
+                else if (!textAfter.trim()) insertion = insertion + ', ';
+
+                editor.value = textBefore + insertion + textAfter;
+            }
+
+            // Set cursor position after inserted tag
+            const newCursorPos = cursorPos + tag.length + (cursorPos === 0 ? 2 : (textBefore.trim() && !textBefore.trim().endsWith(',') ? 4 : 2));
+            editor.setSelectionRange(newCursorPos, newCursorPos);
         }
 
         function updateCharacterTags() {
@@ -1569,7 +1644,7 @@
         function removeCharacter(tagValue) {
             appState.selectedCharacters = appState.selectedCharacters.filter(c => c.tag !== tagValue);
             updateCharacterTags();
-            updatePrompt();
+            removeTagFromPrompt(tagValue);
         }
 
         // ==================== Prompt Functions ====================
