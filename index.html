@@ -1886,6 +1886,292 @@ Example output:
             }
         }
 
+        // ==================== New Storyboard Functions ====================
+        function importFromMainPrompt() {
+            const mainPrompt = document.getElementById('promptEditor').value;
+            const styleSubjectInput = document.getElementById('styleSubjectInput');
+
+            // Extract style tags (@...) and character tags (#...)
+            const styleTags = mainPrompt.match(/@\w+/g) || [];
+            const characterTags = mainPrompt.match(/#[\w()_]+/g) || [];
+
+            // Combine tags
+            const importedTags = [...styleTags, ...characterTags].join(', ');
+
+            if (importedTags) {
+                styleSubjectInput.value = importedTags;
+                showToast('已導入風格及角色標籤', 'success');
+            } else {
+                showToast('主提示詞中未找到風格或角色標籤', 'info');
+            }
+        }
+
+        async function generateFixedItems() {
+            const fixedInput = document.getElementById('fixedItemsInput').value.trim();
+            const storyDesc = document.getElementById('storyDescription').value.trim();
+
+            if (!fixedInput) {
+                showToast('請輸入固定項目', 'info');
+                return;
+            }
+
+            if (!storyDesc) {
+                showToast('請輸入劇情簡述', 'info');
+                return;
+            }
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ 生成中...';
+
+            try {
+                const systemPrompt = `You are an AI prompt generator for NetaYume Lumina anime model.
+Task: Generate a natural language prompt for FIXED elements that will remain consistent across all storyboard frames.
+
+User provided fixed items: ${fixedInput}
+Story context: ${storyDesc}
+
+Requirements:
+1. Describe the fixed elements in natural, flowing language
+2. Use anime/illustration terminology
+3. Focus on consistent visual elements (lighting, environment, character appearance basics)
+4. Be specific and detailed but concise
+5. Output ONLY the prompt, no explanations`;
+
+                const response = await fetch(appState.lmStudioUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: `Generate the fixed elements prompt.` }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 300
+                    })
+                });
+
+                const data = await response.json();
+                const result = data.choices[0].message.content.trim();
+
+                document.getElementById('fixedItemsResult').value = result;
+                showToast('固定項目生成完成', 'success');
+            } catch (error) {
+                showToast('生成失敗: ' + error.message, 'error', 4000);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        async function generateVariableItems() {
+            const variableInput = document.getElementById('variableItemsInput').value.trim();
+            const storyDesc = document.getElementById('storyDescription').value.trim();
+            const frameCount = parseInt(document.getElementById('frameCount').value);
+
+            if (!variableInput) {
+                showToast('請輸入變動項目', 'info');
+                return;
+            }
+
+            if (!storyDesc) {
+                showToast('請輸入劇情簡述', 'info');
+                return;
+            }
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ 生成中...';
+
+            try {
+                const systemPrompt = `You are an AI prompt generator for NetaYume Lumina anime model.
+Task: Generate ${frameCount} different natural language prompts for VARIABLE elements that change across storyboard frames.
+
+User provided variable items: ${variableInput}
+Story context: ${storyDesc}
+Number of frames: ${frameCount}
+
+Requirements:
+1. Generate EXACTLY ${frameCount} different variations
+2. Each variation describes what CHANGES in that specific frame
+3. Follow the story progression naturally
+4. Use anime/illustration terminology
+5. Be specific about actions, expressions, poses, or scene changes
+6. Output format: One variation per line, numbered 1. 2. 3. etc.
+7. Each variation should be a complete, natural language description`;
+
+                const response = await fetch(appState.lmStudioUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: `Generate ${frameCount} variable element prompts following the story.` }
+                        ],
+                        temperature: 0.8,
+                        max_tokens: 500
+                    })
+                });
+
+                const data = await response.json();
+                const result = data.choices[0].message.content.trim();
+
+                // Parse the numbered list
+                const lines = result.split('\n').filter(line => line.trim());
+                const variations = [];
+
+                lines.forEach(line => {
+                    // Remove numbering (1. 2. etc.) and clean up
+                    const cleaned = line.replace(/^\d+\.\s*/, '').trim();
+                    if (cleaned) {
+                        variations.push(cleaned);
+                    }
+                });
+
+                // Store in appState
+                if (!appState.storyboardData) {
+                    appState.storyboardData = {};
+                }
+                appState.storyboardData.variableItems = variations;
+
+                // Display variations for editing
+                displayVariableItems(variations);
+                showToast('變動項目生成完成', 'success');
+            } catch (error) {
+                showToast('生成失敗: ' + error.message, 'error', 4000);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        function displayVariableItems(variations) {
+            const container = document.getElementById('variableItemsContainer');
+            container.innerHTML = '';
+
+            variations.forEach((variation, index) => {
+                const item = document.createElement('div');
+                item.style.cssText = 'margin-bottom: 12px; padding: 12px; background: var(--bg-darker); border-radius: 6px; cursor: pointer;';
+                item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <strong>第 ${index + 1} 張</strong>
+                        <button class="btn" onclick="editVariableItem(${index})" style="padding: 4px 12px; font-size: 12px;">✏️ 編輯</button>
+                    </div>
+                    <div id="varItem_${index}" style="color: var(--text-secondary); font-size: 13px;">${variation}</div>
+                `;
+                container.appendChild(item);
+            });
+
+            updateStoryboardPreview();
+        }
+
+        function editVariableItem(index) {
+            const currentText = appState.storyboardData.variableItems[index];
+            const newText = prompt(`編輯第 ${index + 1} 張的變動項目：`, currentText);
+
+            if (newText !== null && newText.trim()) {
+                appState.storyboardData.variableItems[index] = newText.trim();
+                document.getElementById(`varItem_${index}`).textContent = newText.trim();
+                showToast('已更新第 ' + (index + 1) + ' 張', 'success');
+                updateStoryboardPreview();
+            }
+        }
+
+        function updateStoryboardPreview() {
+            const styleSubject = document.getElementById('styleSubjectInput').value.trim();
+            const fixedItems = document.getElementById('fixedItemsResult').value.trim();
+            const previewDiv = document.getElementById('storyboardPreview');
+
+            if (!appState.storyboardData || !appState.storyboardData.variableItems || appState.storyboardData.variableItems.length === 0) {
+                previewDiv.innerHTML = '<span style="color: var(--text-secondary);">完成上述步驟後，將自動組合為：風格及主體 + 變動項目 + 固定項目</span>';
+                return;
+            }
+
+            let previewHTML = '';
+            appState.storyboardData.variableItems.forEach((varItem, index) => {
+                const fullPrompt = [styleSubject, varItem, fixedItems].filter(p => p).join(', ');
+                previewHTML += `
+                    <div style="margin-bottom: 8px; padding: 8px; background: var(--bg-panel); border-radius: 4px;">
+                        <strong>第 ${index + 1} 張：</strong>
+                        <div style="margin-top: 4px; font-size: 12px; color: var(--text-primary);">${fullPrompt}</div>
+                    </div>
+                `;
+            });
+
+            previewDiv.innerHTML = previewHTML;
+        }
+
+        async function batchRenderNew() {
+            if (!appState.storyboardData || !appState.storyboardData.variableItems || appState.storyboardData.variableItems.length === 0) {
+                showToast('請先生成變動項目', 'info');
+                return;
+            }
+
+            const styleSubject = document.getElementById('styleSubjectInput').value.trim();
+            const fixedItems = document.getElementById('fixedItemsResult').value.trim();
+
+            if (!fixedItems) {
+                showToast('請先生成固定項目', 'info');
+                return;
+            }
+
+            const frameCount = appState.storyboardData.variableItems.length;
+
+            if (!confirm(`確定要生成 ${frameCount} 張圖片嗎？`)) {
+                return;
+            }
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ 批次生成中...';
+
+            try {
+                let currentSeed = appState.seedMode === 'fixed' ?
+                    parseInt(document.getElementById('seedValue').value) : -1;
+
+                for (let i = 0; i < frameCount; i++) {
+                    const variableItem = appState.storyboardData.variableItems[i];
+
+                    // Combine: style+subject + variable + fixed
+                    const fullPrompt = [styleSubject, variableItem, fixedItems]
+                        .filter(p => p)
+                        .join(', ');
+
+                    // Determine seed for this frame
+                    let frameSeed;
+                    if (appState.seedMode === 'all-random') {
+                        frameSeed = -1;
+                    } else if (appState.seedMode === 'first-random') {
+                        if (i === 0) {
+                            frameSeed = -1;
+                        } else {
+                            if (currentSeed === -1) {
+                                frameSeed = Math.floor(Math.random() * 1000000);
+                                currentSeed = frameSeed;
+                            } else {
+                                frameSeed = currentSeed;
+                            }
+                        }
+                    } else {
+                        frameSeed = currentSeed;
+                    }
+
+                    await submitToComfyUI(fullPrompt, frameSeed, `Storyboard ${i + 1}/${frameCount}`);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+                showToast(`已發送 ${frameCount} 張圖片至 ComfyUI`, 'success');
+            } catch (error) {
+                showToast('批次生圖失敗: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
         async function generateStoryboard() {
             const storyInput = document.getElementById('storyInput').value.trim();
             const frameCount = parseInt(document.getElementById('frameCount').value);
