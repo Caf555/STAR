@@ -1024,7 +1024,7 @@
                 <div class="storyboard-step">
                     <div class="step-title">步驟 3：固定項目</div>
                     <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 8px;">
-                        輸入預期不變的項目，配合劇情簡述送至 LM Studio 生成
+                        輸入預期不變的項目，配合劇情簡述送至 LM Studio 生成，或使用自訂功能手動輸入
                     </p>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
                         <div>
@@ -1044,9 +1044,14 @@
                             ></textarea>
                         </div>
                     </div>
-                    <button class="generate-btn" onclick="generateFixedItems()" style="margin-top: 8px; width: 100%;">
-                        🤖 生成固定項目
-                    </button>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button class="generate-btn" onclick="generateFixedItems()" style="flex: 1;">
+                            🤖 生成固定項目
+                        </button>
+                        <button class="btn" onclick="customFixedItems()" style="flex: 1;">
+                            ✏️ 自訂
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Step 4: Variable Items -->
@@ -2006,6 +2011,19 @@ Requirements:
                 btn.disabled = false;
                 btn.textContent = originalText;
             }
+        }
+
+        // Custom fixed items - allow direct manual input
+        function customFixedItems() {
+            const resultTextarea = document.getElementById('fixedItemsResult');
+
+            // Clear the result area and focus on it
+            resultTextarea.value = '';
+            resultTextarea.style.background = 'var(--bg-panel)';
+            resultTextarea.placeholder = '請直接輸入固定項目的提示詞...';
+            resultTextarea.focus();
+
+            showToast('請在右側文字框中直接輸入固定項目提示詞', 'info', 3000);
         }
 
         async function generateVariableItems() {
