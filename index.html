@@ -1090,6 +1090,14 @@
                         style="min-height: 80px;"
                         placeholder="例如：表情、動作、服裝變化..."
                     ></textarea>
+                    <div style="margin-top: 8px; margin-bottom: 8px;">
+                        <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">📌 快速範例：</div>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button class="btn" onclick="loadTemplateExample(1)" style="font-size: 11px; padding: 4px 10px;">累加式（穿衣）</button>
+                            <button class="btn" onclick="loadTemplateExample(2)" style="font-size: 11px; padding: 4px 10px;">漸進式（情緒）</button>
+                            <button class="btn" onclick="loadTemplateExample(3)" style="font-size: 11px; padding: 4px 10px;">時序式（光線）</button>
+                        </div>
+                    </div>
                     <div style="display: flex; gap: 8px; margin-top: 8px;">
                         <button class="generate-btn" onclick="generateVariableItems()" style="flex: 1;">
                             🤖 生成變動項目
@@ -2293,6 +2301,70 @@ Now generate ${frameCount} prompts:`;
             appState.storyboardData.variableItems = [...appState.storyboardData.variableItems];
             displayVariableItems(appState.storyboardData.variableItems);
             showToast('自訂內容已確認', 'success');
+        }
+
+        // Load template examples for variable items
+        function loadTemplateExample(templateNum) {
+            const frameCountInput = document.getElementById('frameCount');
+            const variableInput = document.getElementById('variableItemsInput');
+            const storyDescInput = document.getElementById('storyDescription');
+
+            let frameCount, variableText, storyText;
+
+            switch(templateNum) {
+                case 1: // 累加式（穿衣服）
+                    frameCount = 5;
+                    variableText = `請為「冬天出門穿衣」設計 5 個階段的服裝變化。
+要求：
+- 變化邏輯：每階段比前一階段多穿一件，後面的階段要包含前面所有衣物
+- 風格：日系休閒風
+- 輸出格式：只輸出衣物描述，用逗號分隔
+範例格式：
+階段1：白色高領毛衣
+階段2：白色高領毛衣, 牛仔外套
+...依此類推
+初始階段提示詞：白色高領毛衣`;
+                    storyText = '冬天早晨出門前的穿衣過程，從基本內衣到完整外出裝備，呈現漸進式的保暖層次。';
+                    break;
+
+                case 2: // 漸進式（情緒變化）
+                    frameCount = 4;
+                    variableText = `請設計 4 個階段的表情變化，從「平靜」漸進到「狂喜」。
+要求：
+- 每階段的情緒強度要有明顯差異
+- 描述要包含：眼睛、嘴巴、整體氛圍
+- 用 Stable Diffusion 能理解的英文關鍵詞
+輸出格式：
+階段1：[情緒名稱] - 關鍵詞
+階段2：[情緒名稱] - 關鍵詞
+...依此類推`;
+                    storyText = '角色從平靜狀態逐漸收到好消息，情緒從淡定、微笑、開心到極度興奮的轉變過程。';
+                    break;
+
+                case 3: // 時序式（光線）
+                    frameCount = 6;
+                    variableText = `請設計 6 個時間點的光線變化，從清晨到深夜。
+要求：
+- 包含：時間、光源方向、色調、陰影特徵
+- 適合室內窗邊場景
+- 用英文輸出
+時間點建議：清晨(5-6點)、早晨(8-9點)、中午(12-13點)、傍晚(17-18點)、黃昏(19-20點)、深夜(22-23點)`;
+                    storyText = '一天24小時中的6個代表性時刻，展現室內窗邊場景隨時間推移的自然光線變化，從日出到深夜。';
+                    break;
+
+                default:
+                    showToast('無效的範例編號', 'error');
+                    return;
+            }
+
+            // Apply template
+            frameCountInput.value = frameCount;
+            variableInput.value = variableText;
+            storyDescInput.value = storyText;
+
+            // Show success message
+            const templateNames = ['', '累加式（穿衣）', '漸進式（情緒）', '時序式（光線）'];
+            showToast(`已載入範例：${templateNames[templateNum]}`, 'success', 3000);
         }
 
         function updateStoryboardPreview() {
