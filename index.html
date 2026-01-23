@@ -934,6 +934,19 @@
                     >
                 </div>
 
+                <div class="config-row">
+                    <span class="config-label">生圖步驟 (Steps)</span>
+                    <input
+                        type="number"
+                        id="imageSteps"
+                        class="config-input"
+                        value="25"
+                        min="1"
+                        max="150"
+                        step="1"
+                    >
+                </div>
+
                 <button class="render-btn" onclick="renderImage()">
                     ⚡ 極速生圖
                 </button>
@@ -1068,7 +1081,7 @@
                             class="config-input"
                             value="4"
                             min="2"
-                            max="10"
+                            max="20"
                         >
                     </div>
                     <textarea
@@ -1974,18 +1987,20 @@ Example output:
             btn.textContent = '⏳ 生成中...';
 
             try {
-                const systemPrompt = `You are an AI prompt generator for NetaYume Lumina anime model.
-Task: Generate a natural language prompt for FIXED elements that will remain consistent across all storyboard frames.
+                const systemPrompt = `Generate a single anime illustration prompt for fixed elements.
 
-User provided fixed items: ${fixedInput}
-Story context: ${storyDesc}
+Fixed items: ${fixedInput}
+Story: ${storyDesc}
 
-Requirements:
-1. Describe the fixed elements in natural, flowing language
-2. Use anime/illustration terminology
-3. Focus on consistent visual elements (lighting, environment, character appearance basics)
-4. Be specific and detailed but concise
-5. Output ONLY the prompt, no explanations`;
+RULES:
+- Output ONLY the prompt text
+- NO labels, NO formatting, NO explanations
+- NO "PROMPT:", "Here is", "**", or any prefix
+- Write in natural language
+- Focus on consistent visual elements
+- Keep concise (under 150 words)
+
+Output the prompt directly:`;
 
                 const response = await fetch(appState.lmStudioUrl, {
                     method: 'POST',
@@ -1993,7 +2008,7 @@ Requirements:
                     body: JSON.stringify({
                         messages: [
                             { role: 'system', content: systemPrompt },
-                            { role: 'user', content: `Generate the fixed elements prompt.` }
+                            { role: 'user', content: `prompt` }
                         ],
                         temperature: 0.7,
                         max_tokens: 300
@@ -2001,7 +2016,14 @@ Requirements:
                 });
 
                 const data = await response.json();
-                const result = data.choices[0].message.content.trim();
+                let result = data.choices[0].message.content.trim();
+
+                // Clean up common formatting issues
+                result = result.replace(/^(Here is|This is|The prompt is)[^\n]*:?\s*/i, '');
+                result = result.replace(/^\*\*[^\*]+\*\*\s*/g, '');
+                result = result.replace(/^PROMPT\s*:?\s*/i, '');
+                result = result.replace(/^\[.*?\]:?\s*/g, '');
+                result = result.trim();
 
                 document.getElementById('fixedItemsResult').value = result;
                 showToast('固定項目生成完成', 'success');
@@ -2047,27 +2069,26 @@ Requirements:
             btn.textContent = '⏳ 生成中...';
 
             try {
-                const systemPrompt = `You are an AI prompt generator for NetaYume Lumina anime model.
-Task: Generate ${frameCount} different natural language prompts for VARIABLE elements that change across storyboard frames.
+                const systemPrompt = `You are a prompt generator. Generate EXACTLY ${frameCount} prompts.
 
-User provided variable items: ${variableInput}
-Story context: ${storyDesc}
-Number of frames: ${frameCount}
+CRITICAL RULES:
+- Output ONLY ${frameCount} numbered lines
+- NO explanations, NO introductions, NO conclusions
+- NO labels like "PROMPT:", "Here are", "**", or any formatting
+- NO extra text before or after the list
+- Start immediately with "1. " on the first line
+- Each line: number + period + space + prompt text
+- Stop after line ${frameCount}
 
-Requirements:
-1. Generate EXACTLY ${frameCount} different variations
-2. Each variation describes what CHANGES in that specific frame
-3. Follow the story progression naturally
-4. Use anime/illustration terminology
-5. Be specific about actions, expressions, poses, or scene changes
-6. Keep each variation concise (under 100 characters)
-7. Output ONLY the numbered list, no explanations or introductions
+Variable elements: ${variableInput}
+Story: ${storyDesc}
 
-Output format (STRICT):
-1. [variation 1]
-2. [variation 2]
-3. [variation 3]
-...and so on`;
+Example format (for 3 items):
+1. happy expression, waving hand
+2. surprised look, stepping back
+3. determined face, clenched fist
+
+Now generate ${frameCount} prompts:`;
 
                 const response = await fetch(appState.lmStudioUrl, {
                     method: 'POST',
@@ -2075,15 +2096,21 @@ Output format (STRICT):
                     body: JSON.stringify({
                         messages: [
                             { role: 'system', content: systemPrompt },
-                            { role: 'user', content: `Generate ${frameCount} variable element prompts following the story. Output ONLY the numbered list.` }
+                            { role: 'user', content: `${frameCount}` }
                         ],
-                        temperature: 0.8,
-                        max_tokens: 500
+                        temperature: 0.7,
+                        max_tokens: 600
                     })
                 });
 
                 const data = await response.json();
-                const result = data.choices[0].message.content.trim();
+                let result = data.choices[0].message.content.trim();
+
+                // Remove common prefix patterns
+                result = result.replace(/^(Here are?|Below are?|I've generated|These are)[^\n]*\n/i, '');
+                result = result.replace(/^\*\*[^\*]+\*\*\s*/g, '');
+                result = result.replace(/^PROMPT[S]?\s*:?\s*/gim, '');
+                result = result.replace(/^\[PROMPT.*?\]:?\s*/gim, '');
 
                 // Parse the numbered list with stricter regex
                 const variations = [];
@@ -2091,15 +2118,31 @@ Output format (STRICT):
 
                 for (let line of lines) {
                     line = line.trim();
+
+                    // Skip empty lines or explanatory text
+                    if (!line || line.startsWith('Note:') || line.startsWith('Example:') ||
+                        line.includes('Here are') || line.includes('These are')) {
+                        continue;
+                    }
+
                     // Only match lines that start with number followed by dot and space
                     const match = line.match(/^(\d+)\.\s+(.+)$/);
                     if (match) {
                         const itemNumber = parseInt(match[1]);
-                        const itemText = match[2].trim();
+                        let itemText = match[2].trim();
 
-                        // Filter out lines that are too long (likely explanatory text)
-                        if (itemText.length > 0 && itemText.length < 300) {
-                            variations.push(itemText);
+                        // Remove common formatting markers
+                        itemText = itemText.replace(/^\*\*|\*\*$/g, '');  // Remove bold markers
+                        itemText = itemText.replace(/^\[|\]$/g, '');      // Remove brackets
+                        itemText = itemText.replace(/^PROMPT:?\s*/i, ''); // Remove PROMPT: prefix
+                        itemText = itemText.trim();
+
+                        // Filter out lines that are too long (likely explanatory text) or too short
+                        if (itemText.length > 5 && itemText.length < 300) {
+                            // Skip if it looks like instruction text
+                            if (!itemText.match(/^(generate|create|make|output|provide|the following)/i)) {
+                                variations.push(itemText);
+                            }
                         }
                     }
 
@@ -2171,8 +2214,8 @@ Output format (STRICT):
             const frameCount = parseInt(document.getElementById('frameCount').value);
             const container = document.getElementById('variableItemsContainer');
 
-            if (frameCount < 2 || frameCount > 10) {
-                showToast('分鏡數量必須在 2-10 之間', 'info');
+            if (frameCount < 2 || frameCount > 20) {
+                showToast('分鏡數量必須在 2-20 之間', 'info');
                 return;
             }
 
@@ -2589,6 +2632,7 @@ Use # for characters, @ for artists. Keep prompts concise.`;
             const url = document.getElementById('comfyUrl').value;
             const width = parseInt(document.getElementById('imageWidth').value);
             const height = parseInt(document.getElementById('imageHeight').value);
+            const steps = parseInt(document.getElementById('imageSteps').value);
             const checkpoint = document.getElementById('checkpointModel').value;
 
             // Use random seed if seed is -1
@@ -2617,7 +2661,7 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                     "6": {
                         "inputs": {
                             "seed": actualSeed,
-                            "steps": 25,
+                            "steps": steps,
                             "cfg": 4.5,
                             "sampler_name": "euler",
                             "scheduler": "simple",
