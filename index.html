@@ -2642,25 +2642,22 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                 let currentSeed = appState.seedMode === 'fixed' ?
                     parseInt(document.getElementById('seedValue').value) : -1;
 
+                // For first-random mode, generate the seed before the loop
+                if (appState.seedMode === 'first-random') {
+                    currentSeed = Math.floor(Math.random() * 1000000000);
+                }
+
                 for (let i = 0; i < appState.storyboardFrames.length; i++) {
                     const frame = appState.storyboardFrames[i];
 
                     // Determine seed for this frame
                     let frameSeed;
                     if (appState.seedMode === 'all-random') {
-                        frameSeed = -1;
+                        frameSeed = -1;  // Each frame gets random seed
                     } else if (appState.seedMode === 'first-random') {
-                        if (i === 0) {
-                            frameSeed = -1; // First frame random
-                        } else if (currentSeed === -1) {
-                            // Use seed from first frame result (in real implementation)
-                            frameSeed = Math.floor(Math.random() * 1000000);
-                            currentSeed = frameSeed;
-                        } else {
-                            frameSeed = currentSeed;
-                        }
+                        frameSeed = currentSeed;  // All frames use the same seed (generated above)
                     } else {
-                        frameSeed = currentSeed;
+                        frameSeed = currentSeed;  // Fixed mode: all frames use specified seed
                     }
 
                     // Build full prompt for stacking mode
