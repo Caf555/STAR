@@ -3,1080 +3,3479 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MERMAID 圖表設計工具</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
-    <script>
-        // 備用 Mermaid 載入機制
-        window.addEventListener('DOMContentLoaded', function() {
-            if (typeof mermaid === 'undefined') {
-                console.warn("主要 CDN 載入失敗，嘗試從備用來源載入 Mermaid...");
-                var script = document.createElement('script');
-                script.src = "https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js";
-                script.onload = function() {
-                    console.log("Mermaid 從備用來源成功載入");
-                    if (window.mermaidInitialized) {
-                        mermaid.initialize({
-                            startOnLoad: false,
-                            theme: 'default',
-                            securityLevel: 'loose'
-                        });
-                    }
-                };
-                script.onerror = function() {
-                    console.error("所有 Mermaid 源均無法載入");
-                    alert("無法載入 Mermaid 庫，請檢查您的網絡連接或稍後再試。");
-                };
-                document.head.appendChild(script);
-            }
-        });
-    </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <title>AI Art Control Panel - STAR v1.0</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        body {
-            font-family: 'Microsoft JhengHei', '微軟正黑體', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        * {
             margin: 0;
-            padding: 20px;
-            color: #333;
-            line-height: 1.6;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .container {
-            display: flex;
-            flex-direction: column;
-            max-width: 1200px;
-            margin: 0 auto;
+
+        :root {
+            --bg-dark: #1a1a1a;
+            --bg-darker: #0f0f0f;
+            --bg-panel: #252525;
+            --bg-hover: #2f2f2f;
+            --border-color: #3a3a3a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --accent-blue: #4a9eff;
+            --accent-green: #4caf50;
+            --accent-red: #f44336;
+            --accent-orange: #ff9800;
+            --accent-purple: #9c27b0;
         }
-        h1, h2, h3 {
-            color: #2c3e50;
-        }
-        .editor-container {
-            display: flex;
-            flex-direction: row;
-            margin-bottom: 20px;
-            gap: 20px;
-        }
-        @media (max-width: 768px) {
-            .editor-container {
-                flex-direction: column;
-            }
-        }
-        .code-area, .preview-area {
-            flex: 1;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        .code-area {
-            display: flex;
-            flex-direction: column;
-        }
-        textarea {
-            width: 100%;
-            height: 300px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 10px;
-            font-family: monospace;
-            resize: vertical;
-        }
-        .preview-area {
-            background-color: #f9f9f9;
-            min-height: 300px;
-            overflow: auto;
-        }
-        .diagram-container {
-            position: relative;
-            margin: 0 auto;
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft JhengHei', '微软正黑体', Tahoma, sans-serif;
+            background: var(--bg-darker);
+            color: var(--text-primary);
             overflow: hidden;
+            height: 100vh;
         }
-        .button-group {
-            margin-top: 10px;
+
+        /* Header */
+        .header {
+            background: var(--bg-dark);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 20px;
             display: flex;
-            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            height: 60px;
+        }
+
+        .header-left h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--accent-blue);
+        }
+
+        .header-left .version {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-left: 8px;
+        }
+
+        .header-right {
+            display: flex;
             gap: 10px;
         }
-        button {
-            padding: 8px 15px;
-            background-color: #4682B4;
-            color: white;
-            border: none;
-            border-radius: 4px;
+
+        .file-upload-btn {
+            padding: 8px 16px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
             cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .file-upload-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent-blue);
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+
+        /* Left Panel */
+        .left-panel {
+            width: 420px;
+            background: var(--bg-dark);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .panel-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-title {
             font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        button:hover {
-            background-color: #36648B;
-        }
-        .examples {
-            margin-top: 30px;
-        }
-        .example-item {
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: #f5f5f5;
-            border-radius: 4px;
-        }
-        .example-code {
-            background-color: #f1f1f1;
+
+        /* AI Input Section */
+        .ai-input-area {
+            width: 100%;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
             padding: 10px;
-            border-radius: 4px;
-            font-family: monospace;
-            white-space: pre-wrap;
-            margin: 10px 0;
+            color: var(--text-primary);
+            font-size: 13px;
+            resize: vertical;
+            min-height: 80px;
+            font-family: inherit;
         }
-        .config-panel {
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: #f0f8ff;
-            border-radius: 4px;
+
+        .ai-input-area:focus {
+            outline: none;
+            border-color: var(--accent-blue);
         }
+
+        .generate-btn {
+            width: 100%;
+            padding: 8px;
+            margin-top: 8px;
+            background: var(--accent-purple);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .generate-btn:hover {
+            background: #7b1fa2;
+            transform: translateY(-1px);
+        }
+
+        /* Tag Display */
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+            min-height: 32px;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tag.style-tag {
+            border-color: var(--accent-orange);
+            color: var(--accent-orange);
+        }
+
+        .tag.character-tag {
+            border-color: var(--accent-purple);
+            color: var(--accent-purple);
+        }
+
+        .tag:hover {
+            background: var(--bg-hover);
+        }
+
+        .tag-remove {
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* Prompt Editor */
+        .prompt-editor {
+            width: 100%;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+            color: var(--text-primary);
+            font-size: 13px;
+            resize: vertical;
+            min-height: 120px;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .prompt-editor:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 8px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent-blue);
+        }
+
+        /* ComfyUI Config */
+        .config-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .config-label {
+            min-width: 80px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .config-input {
+            flex: 1;
+            padding: 8px 12px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        .config-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .status-indicator.online {
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+
+        .status-indicator.offline {
+            background: var(--accent-red);
+        }
+
+        .render-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .render-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(74, 158, 255, 0.4);
+        }
+
+        /* Right Panel */
+        .right-panel {
+            flex: 1;
+            background: var(--bg-darker);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Tabs */
         .tabs {
             display: flex;
-            border-bottom: 1px solid #ddd;
-            margin-bottom: 15px;
+            background: var(--bg-dark);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 20px;
         }
+
         .tab {
-            background-color: #f5f5f5;
-            border: 1px solid #ddd;
-            border-bottom: none;
-            padding: 8px 15px;
+            padding: 14px 20px;
             cursor: pointer;
-            margin-right: 5px;
-            border-top-left-radius: 4px;
-            border-top-right-radius: 4px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
         }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
         .tab.active {
-            background-color: #4682B4;
-            color: white;
-            border-color: #4682B4;
+            color: var(--accent-blue);
+            border-bottom-color: var(--accent-blue);
         }
+
         .tab-content {
             display: none;
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
         }
+
         .tab-content.active {
             display: block;
         }
-        .config-row {
+
+        /* Style Cards */
+        .style-search {
+            margin-bottom: 16px;
             display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 10px;
+            gap: 12px;
             align-items: center;
         }
-        .config-label {
-            min-width: 120px;
-            font-weight: bold;
+
+        .style-search input {
+            flex: 1;
+            padding: 10px 16px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 14px;
         }
-        select, input {
-            padding: 6px 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            width: 180px;
+
+        .style-search input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
         }
-        .export-options {
-            background-color: #e6f2ff;
-            padding: 15px;
-            border-radius: 4px;
-            margin-top: 15px;
+
+        .style-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
         }
-        .export-options h3 {
-            margin-top: 0;
+
+        .style-card {
+            background: var(--bg-panel);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            display: inline-flex;
+            flex-direction: column;
+            position: relative;
+            width: auto;
+            min-width: fit-content;
         }
-        .error-message {
-            background-color: #ffebee;
-            color: #d32f2f;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 10px;
+
+        .style-card-image {
+            width: 100%;
+            height: 200px;
+            background: var(--bg-darker);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .style-card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .style-tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            line-height: 1.5;
+            white-space: normal;
+            min-width: 280px;
+            max-width: 400px;
+            width: max-content;
+            text-align: left;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            margin-bottom: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .style-card:hover .style-tooltip {
+            opacity: 1;
+        }
+
+        .style-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .style-card.selected {
+            border-color: var(--accent-orange);
+            background: rgba(255, 152, 0, 0.1);
+        }
+
+        .style-card-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .style-card-tag {
+            font-size: 12px;
+            color: var(--text-secondary);
             font-family: monospace;
-            white-space: pre-wrap;
         }
-        .info-message {
-            background-color: #e8f5e9;
-            color: #2e7d32;
-            padding: 10px;
+
+        /* Character DB */
+        .character-filters {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .filter-select {
+            flex: 1;
+            padding: 10px 12px;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        .character-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+        }
+
+        .character-item {
+            background: var(--bg-panel);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .character-item:hover {
+            border-color: var(--accent-purple);
+            transform: translateY(-2px);
+        }
+
+        .character-name {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .character-series {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Storyboard */
+        .storyboard-step {
+            background: var(--bg-panel);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .step-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--accent-blue);
+        }
+
+        .storyboard-frames {
+            display: grid;
+            gap: 12px;
+        }
+
+        .frame-item {
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .frame-number {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .frame-prompt {
+            font-size: 13px;
+            color: var(--text-primary);
+            font-family: monospace;
+            word-wrap: break-word;
+        }
+
+        /* History Gallery */
+        .history-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .history-item {
+            background: var(--bg-panel);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+
+        .history-item:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .history-image {
+            width: 100%;
+            height: 200px;
+            background: var(--bg-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            position: relative;
+        }
+
+        .history-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: var(--bg-darker);
+        }
+
+        .history-status {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-queue {
+            background: var(--accent-orange);
+            color: white;
+        }
+
+        .status-success {
+            background: var(--accent-green);
+            color: white;
+        }
+
+        .status-failed {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        .history-actions {
+            display: flex;
+            gap: 8px;
+            padding: 12px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 6px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
             border-radius: 4px;
-            margin-top: 10px;
+            color: var(--text-primary);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
         }
-        .line-highlight {
-            background-color: #ffcdd2;
+
+        .action-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent-blue);
+        }
+
+        /* Lightbox */
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lightbox.active {
+            display: flex;
+        }
+
+        .lightbox-content {
+            max-width: 90vw;
+            max-height: 90vh;
+            position: relative;
+        }
+
+        .lightbox-image {
+            max-width: 100%;
+            max-height: 90vh;
+            object-fit: contain;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            background: var(--accent-red);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .lightbox-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 20px 16px;
+            cursor: pointer;
+            font-size: 24px;
+            border-radius: 6px;
+        }
+
+        .lightbox-prev {
+            left: 20px;
+        }
+
+        .lightbox-next {
+            right: 20px;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            max-width: 80%;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        .toast.success {
+            background: linear-gradient(135deg, var(--accent-green), #66bb6a);
+        }
+
+        .toast.error {
+            background: linear-gradient(135deg, var(--accent-red), #e57373);
+        }
+
+        .toast.info {
+            background: linear-gradient(135deg, var(--accent-blue), #64b5f6);
+        }
+
+        /* Utility */
+        .hidden {
+            display: none !important;
+        }
+
+        input[type="number"] {
+            width: 80px;
+        }
+
+        .dice-btn {
+            padding: 8px 12px;
+            background: var(--accent-green);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .dice-btn:hover {
+            background: #388e3c;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 10px;
+            background: var(--bg-panel);
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .mode-btn.active {
+            border-color: var(--accent-blue);
+            background: rgba(74, 158, 255, 0.1);
+            color: var(--accent-blue);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>MERMAID 圖表設計工具</h1>
-        <p>此工具可協助您使用 MERMAID 語法來繪製各種圖表，包括流程圖、序列圖、甘特圖等。</p>
-        
-        <div class="config-panel">
-            <h2>樣式與排列設定</h2>
-            
-            <div class="tabs">
-                <div class="tab active" data-tab="basic">基本設定</div>
-                <div class="tab" data-tab="flowchart">流程圖設定</div>
-                <div class="tab" data-tab="sequence">序列圖設定</div>
-                <div class="tab" data-tab="class">類別圖設定</div>
-                <div class="tab" data-tab="gantt">甘特圖設定</div>
-                <div class="tab" data-tab="state">狀態圖設定</div>
-            </div>
-            
-            <div class="tab-content active" id="basic-tab">
-                <div class="config-row">
-                    <div class="config-label">主題樣式：</div>
-                    <select id="theme-select">
-                        <option value="default">預設</option>
-                        <option value="forest">森林綠</option>
-                        <option value="dark">深色</option>
-                        <option value="neutral">中性</option>
-                    </select>
-                </div>
-                <div class="config-row">
-                    <div class="config-label">安全級別：</div>
-                    <select id="security-level">
-                        <option value="loose">寬鬆 (允許點擊事件)</option>
-                        <option value="strict">嚴格 (不允許點擊)</option>
-                    </select>
-                </div>
-                <div class="config-row">
-                    <div class="config-label">圖表尺寸設定：</div>
-                </div>
-                <div class="config-row">
-                    <div class="config-label">寬度 (像素)：</div>
-                    <input type="number" id="diagram-width" min="100" max="2000" value="800" step="50">
-                </div>
-                <div class="config-row">
-                    <div class="config-label">高度 (像素)：</div>
-                    <input type="number" id="diagram-height" min="100" max="2000" value="600" step="50">
-                </div>
-                <div class="config-row">
-                    <label>
-                        <input type="checkbox" id="use-fixed-size" checked> 使用固定尺寸
-                    </label>
-                    <label style="margin-left: 20px;">
-                        <input type="checkbox" id="maintain-aspect-ratio"> 保持比例
-                    </label>
-                </div>
-                <div class="config-row">
-                    <div class="config-label">縮放比例：</div>
-                    <input type="range" id="diagram-scale" min="0.5" max="2" value="1" step="0.1" style="width: 150px;">
-                    <span id="scale-value" style="margin-left: 10px;">1.0</span>
-                </div>
-            </div>
-            
-            <div class="tab-content" id="flowchart-tab">
-                <div class="config-row">
-                    <div class="config-label">圖表方向：</div>
-                    <select id="direction-select">
-                        <option value="TB">上到下 (TB)</option>
-                        <option value="TD">頂部到底部 (TD)</option>
-                        <option value="BT">下到上 (BT)</option>
-                        <option value="LR">左到右 (LR)</option>
-                        <option value="RL">右到左 (RL)</option>
-                    </select>
-                </div>
-                
-                <div class="config-row">
-                    <div class="config-label">佈局方式：</div>
-                    <select id="layout-select">
-                        <option value="default">預設佈局</option>
-                        <option value="hierarchical">分層次化佈局</option>
-                        <option value="adaptive">自適應佈局</option>
-                        <option value="circular">環形佈局</option>
-                        <option value="grid">網格佈局</option>
-                    </select>
-                </div>
-                
-                <div class="config-row">
-                    <div class="config-label">曲線樣式：</div>
-                    <select id="curve-select">
-                        <option value="linear">直線 (linear)</option>
-                        <option value="basis">平滑曲線 (basis)</option>
-                        <option value="cardinal">基數曲線 (cardinal)</option>
-                        <option value="step">階梯式 (step)</option>
-                    </select>
-                </div>
-                
-                <div class="config-row">
-                    <div class="config-label">節點間距：</div>
-                    <input type="number" id="node-spacing" min="10" max="200" value="50" step="5">
-                </div>
-                
-                <div class="config-row">
-                    <div class="config-label">層次間距：</div>
-                    <input type="number" id="rank-spacing" min="10" max="200" value="50" step="5">
-                </div>
-            </div>
-            
-            <div class="tab-content" id="sequence-tab">
-                <div class="config-row">
-                    <div class="config-label">角色間距：</div>
-                    <input type="number" id="actor-margin" min="50" max="250" value="150" step="10">
-                </div>
-                
-                <div class="config-row">
-                    <div class="config-label">消息箭頭樣式：</div>
-                    <select id="arrow-select">
-                        <option value="default">預設</option>
-                        <option value="wide">寬箭頭</option>
-                        <option value="angular">角形箭頭</option>
-                        <option value="open">開放式箭頭</option>
-                    </select>
-                </div>
-                
-                <div class="config-row">
-                    <div class="config-label">角色形狀：</div>
-                    <select id="actor-shape">
-                        <option value="rect">矩形</option>
-                        <option value="round">圓角矩形</option>
-                        <option value="circle">圓形</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="tab-content" id="class-tab">
-                <div class="config-row">
-                    <div class="config-label">類別圖定位：</div>
-                    <select id="class-layout">
-                        <option value="default">預設</option>
-                        <option value="compact">緊湊佈局</option>
-                        <option value="hierarchy">階層式</option>
-                    </select>
-                </div>
-                
-                <div class="config-row">
-                    <div class="config-label">類別形狀：</div>
-                    <select id="class-shape">
-                        <option value="rect">矩形</option>
-                        <option value="round">圓角矩形</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="tab-content" id="gantt-tab">
-                <div class="config-row">
-                    <div class="config-label">甘特圖檢視：</div>
-                    <select id="gantt-axis">
-                        <option value="default">預設</option>
-                        <option value="day">每日檢視</option>
-                        <option value="week">每週檢視</option>
-                        <option value="month">每月檢視</option>
-                    </select>
-                </div>
-                
-                <div class="config-row">
-                    <div class="config-label">任務間距：</div>
-                    <input type="number" id="gantt-task-spacing" min="5" max="100" value="20" step="5">
-                </div>
-            </div>
-            
-            <div class="tab-content" id="state-tab">
-                <div class="config-row">
-                    <div class="config-label">狀態形狀：</div>
-                    <select id="state-shape">
-                        <option value="default">預設</option>
-                        <option value="round">圓角矩形</option>
-                        <option value="square">方形</option>
-                        <option value="circle">圓形</option>
-                    </select>
-                </div>
-                
-                <div class="config-row">
-                    <div class="config-label">轉換樣式：</div>
-                    <select id="state-transition">
-                        <option value="default">預設箭頭</option>
-                        <option value="thick">粗箭頭</option>
-                        <option value="dotted">點線箭頭</option>
-                    </select>
-                </div>
-                
-                <div class="config-row">
-                    <div class="config-label">狀態間距：</div>
-                    <input type="number" id="state-spacing" min="10" max="200" value="40" step="5">
-                </div>
-            </div>
-            
-            <div class="config-row">
-                <button id="apply-settings">套用設定</button>
-            </div>
-            
-            <div class="export-options">
-                <h3>匯出選項</h3>
-                <div class="button-group">
-                    <button id="export-png">匯出 PNG</button>
-                    <button id="export-svg">匯出 SVG</button>
-                    <button id="export-mmd">匯出 MMD</button>
-                </div>
-                <div class="config-row" style="margin-top: 10px;">
-                    <div class="config-label">檔案名稱：</div>
-                    <input type="text" id="filename" value="mermaid-diagram" placeholder="輸入檔案名稱">
-                </div>
-                <div class="config-row">
-                    <div class="config-label">PNG縮放比例：</div>
-                    <input type="number" id="png-scale" min="1" max="5" value="2" step="0.5">
-                    <div class="config-label">PNG邊距：</div>
-                    <input type="number" id="png-padding" min="0" max="50" value="10" step="5">
-                </div>
-            </div>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-left">
+            <h1>STAR - AI Art Control Panel <span class="version">v1.0</span></h1>
         </div>
-        
-        <div class="editor-container">
-            <div class="code-area">
-                <h2>編輯區</h2>
-                <p>在此輸入 MERMAID 語法：</p>
-                <textarea id="code-input" placeholder="在此輸入 MERMAID 語法..."></textarea>
-                <div class="button-group">
-                    <button id="render-btn">繪製圖表</button>
-                    <button id="clear-btn">清除</button>
-                    <button id="copy-btn">複製語法</button>
-                    <button id="load-example">載入範例</button>
-                    <button id="check-syntax">檢查語法</button>
-                </div>
-            </div>
-            
-            <div class="preview-area">
-                <h2>預覽區</h2>
-                <div id="diagram-output"></div>
-                <div id="error-output"></div>
-            </div>
-        </div>
-        
-        <div class="examples">
-            <h2>MERMAID 語法範例</h2>
-            
-            <div class="example-item">
-                <h3>流程圖 (Flowchart)</h3>
-                <div class="example-code">graph TD
-    A[開始] --> B{是否有帳戶?}
-    B -->|是| C[登入]
-    B -->|否| D[註冊]
-    C --> E[主頁面]
-    D --> E
-    E --> F[結束]</div>
-                <button class="use-example" data-type="flowchart">使用此範例</button>
-            </div>
-            
-            <div class="example-item">
-                <h3>序列圖 (Sequence Diagram)</h3>
-                <div class="example-code">sequenceDiagram
-    participant 客戶
-    participant 服務員
-    participant 廚師
-    
-    客戶->>服務員: 點餐
-    服務員->>廚師: 傳達訂單
-    廚師->>廚師: 準備餐點
-    廚師->>服務員: 餐點準備完成
-    服務員->>客戶: 送餐</div>
-                <button class="use-example" data-type="sequence">使用此範例</button>
-            </div>
-            
-            <div class="example-item">
-                <h3>甘特圖 (Gantt Chart)</h3>
-                <div class="example-code">gantt
-    title 專案時程表
-    dateFormat YYYY-MM-DD
-    section 規劃階段
-    需求分析       :a1, 2023-01-01, 7d
-    系統設計       :a2, after a1, 10d
-    section 開發階段
-    編碼實作       :a3, after a2, 15d
-    測試          :a4, after a3, 5d
-    section 部署階段
-    系統部署       :a5, after a4, 2d
-    使用者培訓     :a6, after a5, 3d</div>
-                <button class="use-example" data-type="gantt">使用此範例</button>
-            </div>
-            
-            <div class="example-item">
-                <h3>類別圖 (Class Diagram)</h3>
-                <div class="example-code">classDiagram
-    class 動物 {
-        +String 名稱
-        +int 年齡
-        +吃()
-        +睡覺()
-    }
-    class 狗 {
-        +String 品種
-        +吠叫()
-    }
-    class 貓 {
-        +String 毛色
-        +喵喵叫()
-    }
-    動物 <|-- 狗
-    動物 <|-- 貓</div>
-                <button class="use-example" data-type="class">使用此範例</button>
-            </div>
-            
-            <div class="example-item">
-                <h3>狀態圖 (State Diagram)</h3>
-                <div class="example-code">stateDiagram-v2
-    [*] --> 閒置
-    閒置 --> 處理中: 開始處理
-    處理中 --> 完成: 處理完成
-    處理中 --> 錯誤: 發生錯誤
-    錯誤 --> 處理中: 重試
-    完成 --> [*]</div>
-                <button class="use-example" data-type="state">使用此範例</button>
-            </div>
-        </div>
-        
-        <div class="instructions">
-            <h2>使用說明</h2>
-            <ol>
-                <li>在編輯區輸入 MERMAID 語法，或從下方範例中選擇一個</li>
-                <li>在設定面板中切換標籤，選擇適合的樣式和佈局選項</li>
-                <li>點擊「套用設定」按鈕來更新設定</li>
-                <li>點擊「繪製圖表」按鈕產生圖表</li>
-                <li>使用匯出選項將圖表匯出為 PNG、SVG 或 MMD 格式</li>
-                <li>如需清除編輯區，請點擊「清除」按鈕</li>
-                <li>點擊「複製語法」可將目前的 MERMAID 語法複製到剪貼簿</li>
-                <li>若圖表無法正確渲染，請點擊「檢查語法」尋找可能的錯誤</li>
-            </ol>
-            <p>想了解更多關於 MERMAID 語法的資訊，請訪問 <a href="https://mermaid.js.org/" target="_blank">MERMAID 官方文檔</a>。</p>
+        <div class="header-right">
+            <label class="file-upload-btn">
+                上傳角色圖鑑 CSV
+                <input type="file" id="characterCsvUpload" accept=".csv" onchange="loadCharacterCSV(event)" style="display: none;">
+            </label>
+            <label class="file-upload-btn">
+                上傳 Artist Tag CSV
+                <input type="file" id="csvUpload" accept=".csv" style="display: none;">
+            </label>
+            <label class="file-upload-btn">
+                上傳 Images ZIP
+                <input type="file" id="zipUpload" accept=".zip" style="display: none;">
+            </label>
         </div>
     </div>
 
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Left Panel -->
+        <div class="left-panel">
+            <!-- AI Input Section -->
+            <div class="panel-section">
+                <div class="section-title">AI 文字輸入</div>
+                <textarea
+                    id="aiInput"
+                    class="ai-input-area"
+                    placeholder="輸入中文或英文描述，例如：一個魔法少女在森林裡..."
+                ></textarea>
+                <button class="generate-btn" onclick="generatePrompt()">
+                    🪄 AI 生成提示詞
+                </button>
+            </div>
+
+            <!-- Prompt Editor Section -->
+            <div class="panel-section">
+                <div class="section-title">提示詞編輯器</div>
+
+                <!-- Tags Display -->
+                <div class="tag-container" id="styleTags"></div>
+                <div class="tag-container" id="characterTags"></div>
+
+                <!-- Prompt Editor -->
+                <textarea
+                    id="promptEditor"
+                    class="prompt-editor"
+                    placeholder="最終提示詞將在此顯示..."
+                ></textarea>
+
+                <!-- Editor Buttons -->
+                <div class="button-group">
+                    <button class="btn" onclick="addQualityTags()">✨ 高畫質</button>
+                    <button class="btn" onclick="clearPrompt()">🗑️ 清空</button>
+                    <button class="btn" onclick="copyPrompt()">📋 複製</button>
+                </div>
+            </div>
+
+            <!-- ComfyUI Config Section -->
+            <div class="panel-section">
+                <div class="section-title">ComfyUI 設定</div>
+
+                <div class="config-row">
+                    <span class="config-label">伺服器</span>
+                    <input
+                        type="text"
+                        id="comfyUrl"
+                        class="config-input"
+                        value="http://127.0.0.1:8188"
+                        placeholder="ComfyUI URL"
+                    >
+                    <div
+                        class="status-indicator"
+                        id="connectionStatus"
+                        onclick="testConnection()"
+                        title="點擊測試連線"
+                    ></div>
+                </div>
+
+                <div class="config-row">
+                    <span class="config-label">大模型</span>
+                    <select id="checkpointModel" class="config-input">
+                        <option value="netayumeLuminaNetaLumina_v40.safetensors">NetaYume_v40 (推薦)</option>
+                        <option value="NetaYumev35_pretrained_all_in_one.safetensors">NetaYume_v35</option>
+                    </select>
+                </div>
+
+                <div class="config-row">
+                    <span class="config-label">放大模型</span>
+                    <select id="upscaleModel" class="config-input">
+                        <option value="RealESRGAN_x4plus.pth">RealESRGAN x4 (推薦)</option>
+                        <option value="RealESRGAN_x4plus_anime_6B.pth">RealESRGAN Anime x4</option>
+                        <option value="ESRGAN_4x.pth">ESRGAN x4</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+                        <button class="btn" onclick="setImageSize(512, 1024)" style="font-size: 12px; padding: 6px 12px;">512×1024</button>
+                        <button class="btn" onclick="setImageSize(768, 1024)" style="font-size: 12px; padding: 6px 12px;">768×1024</button>
+                        <button class="btn" onclick="setImageSize(832, 1216)" style="font-size: 12px; padding: 6px 12px;">832×1216</button>
+                        <button class="btn" onclick="setImageSize(1024, 1024)" style="font-size: 12px; padding: 6px 12px;">1024×1024</button>
+                        <button class="btn" onclick="swapImageSize()" style="font-size: 12px; padding: 6px 12px;">🔄 寬高互換</button>
+                    </div>
+                </div>
+                <div class="config-row">
+                    <span class="config-label">寬度</span>
+                    <input
+                        type="number"
+                        id="imageWidth"
+                        class="config-input"
+                        value="512"
+                        min="256"
+                        max="2048"
+                        step="64"
+                    >
+                    <span class="config-label">高度</span>
+                    <input
+                        type="number"
+                        id="imageHeight"
+                        class="config-input"
+                        value="1024"
+                        min="256"
+                        max="2048"
+                        step="64"
+                    >
+                </div>
+
+                <div class="config-row">
+                    <span class="config-label">生圖步驟 (Steps)</span>
+                    <input
+                        type="number"
+                        id="imageSteps"
+                        class="config-input"
+                        value="25"
+                        min="1"
+                        max="150"
+                        step="1"
+                    >
+                </div>
+
+                <div style="margin: 12px 0; padding: 10px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 6px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="useLightningLora" onchange="toggleLightningLora()">
+                        <span style="color: var(--text-primary); font-weight: bold;">⚡ Lightning LoRA (2倍速)</span>
+                    </label>
+                    <p style="color: var(--text-secondary); font-size: 11px; margin: 6px 0 0 24px; line-height: 1.4;">
+                        啟用後：CFG=1, Steps建議20, 禁用negative prompt, 手部細節更佳
+                    </p>
+                </div>
+
+                <button class="render-btn" onclick="renderImage()">
+                    ⚡ 極速生圖
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="right-panel">
+            <!-- Tabs -->
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('styles', this)">風格選擇</div>
+                <div class="tab" onclick="switchTab('characters', this)">角色圖鑑</div>
+                <div class="tab" onclick="switchTab('storyboard', this)">劇情分鏡</div>
+                <div class="tab" onclick="switchTab('history', this)">歷史紀錄</div>
+            </div>
+
+            <!-- Styles Tab -->
+            <div class="tab-content active" id="stylesTab">
+                <h3 style="margin-bottom: 16px;">內建知名風格</h3>
+                <div class="style-grid" id="builtinStyles"></div>
+
+                <div style="margin: 30px 0; display: flex; align-items: center; gap: 12px;">
+                    <h3>自訂風格</h3>
+                    <button class="dice-btn" onclick="randomCustomStyles()">🎲 隨機 8 組</button>
+                </div>
+                <div class="style-search">
+                    <input type="text" id="styleSearch" placeholder="🔍 搜尋風格關鍵字..." oninput="filterCustomStyles()">
+                </div>
+                <div class="style-grid" id="customStyles">
+                    <p style="color: var(--text-secondary);">請上傳 Artist Tag CSV 檔案以載入自訂風格</p>
+                </div>
+            </div>
+
+            <!-- Characters Tab -->
+            <div class="tab-content" id="charactersTab">
+                <div class="character-filters">
+                    <select id="categoryFilter" class="filter-select" onchange="updateTypeFilter()">
+                        <option value="">選擇類別</option>
+                    </select>
+                    <select id="typeFilter" class="filter-select" onchange="updateWorksFilter()">
+                        <option value="">選擇類型</option>
+                    </select>
+                    <select id="worksFilter" class="filter-select" onchange="updateCharacterList()">
+                        <option value="">選擇作品</option>
+                    </select>
+                </div>
+                <div style="margin: 12px 0; display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="includeSeriesTag" checked>
+                    <label for="includeSeriesTag" style="color: var(--text-primary); cursor: pointer;">包含作品英文名稱標籤</label>
+                </div>
+                <div class="character-list" id="characterList">
+                    <p style="color: var(--text-secondary);">請上傳角色圖鑑 CSV 或選擇類別、類型、作品以顯示角色</p>
+                </div>
+            </div>
+
+            <!-- Storyboard Tab -->
+            <div class="tab-content" id="storyboardTab">
+                <!-- Step 1: Style and Subject -->
+                <div class="storyboard-step">
+                    <div class="step-title">步驟 1：風格及主體</div>
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 8px;">
+                        可加入風格及角色標籤，或自行輸入提示詞
+                    </p>
+                    <textarea
+                        id="styleSubjectInput"
+                        class="ai-input-area"
+                        style="min-height: 70px;"
+                        placeholder="例如：@shinkai_makoto, #hatsune_miku, anime style..."
+                    ></textarea>
+                    <button class="btn" onclick="importFromMainPrompt()" style="width: auto; padding: 6px 16px; font-size: 13px;">📥 從主提示詞導入</button>
+                </div>
+
+                <!-- Step 2: Story Description -->
+                <div class="storyboard-step">
+                    <div class="step-title">步驟 2：劇情簡述</div>
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 8px;">
+                        描述畫面安排及各分鏡變動規則
+                    </p>
+                    <textarea
+                        id="storyDescription"
+                        class="ai-input-area"
+                        style="min-height: 70px;"
+                        placeholder="例如：魔法少女從日常生活變身戰鬥的過程..."
+                    ></textarea>
+                </div>
+
+                <!-- Step 3: Fixed Items -->
+                <div class="storyboard-step">
+                    <div class="step-title">步驟 3：固定項目</div>
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 8px;">
+                        輸入預期不變的項目，配合劇情簡述送至 LM Studio 生成，或使用自訂功能手動輸入
+                    </p>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <textarea
+                                id="fixedItemsInput"
+                                class="ai-input-area"
+                                style="min-height: 100px;"
+                                placeholder="輸入：室內場景、溫暖光線..."
+                            ></textarea>
+                        </div>
+                        <div>
+                            <textarea
+                                id="fixedItemsResult"
+                                class="ai-input-area"
+                                style="min-height: 100px; background: var(--bg-darker);"
+                                placeholder="生成結果（可編輯）..."
+                            ></textarea>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button class="generate-btn" onclick="generateFixedItems()" style="flex: 1;">
+                            🤖 生成固定項目
+                        </button>
+                        <button class="btn" onclick="customFixedItems()" style="flex: 1;">
+                            ✏️ 自訂
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 4: Variable Items -->
+                <div class="storyboard-step">
+                    <div class="step-title">步驟 4：變動項目</div>
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 8px;">
+                        輸入預期變動的項目，配合劇情簡述生成指定數量的提示詞，或使用自訂功能手動輸入
+                    </p>
+                    <div class="config-row" style="margin-bottom: 12px;">
+                        <span class="config-label">分鏡數量</span>
+                        <input
+                            type="number"
+                            id="frameCount"
+                            class="config-input"
+                            value="4"
+                            min="2"
+                            max="20"
+                        >
+                    </div>
+                    <textarea
+                        id="variableItemsInput"
+                        class="ai-input-area"
+                        style="min-height: 80px;"
+                        placeholder="例如：表情、動作、服裝變化..."
+                    ></textarea>
+                    <div style="margin-top: 8px; margin-bottom: 8px;">
+                        <div style="color: var(--text-secondary); font-size: 11px; margin-bottom: 4px;">📌 快速範例：</div>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button class="btn" onclick="loadTemplateExample(1)" style="font-size: 11px; padding: 4px 10px;">累加式（穿衣）</button>
+                            <button class="btn" onclick="loadTemplateExample(2)" style="font-size: 11px; padding: 4px 10px;">漸進式（情緒）</button>
+                            <button class="btn" onclick="loadTemplateExample(3)" style="font-size: 11px; padding: 4px 10px;">時序式（光線）</button>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button class="generate-btn" onclick="generateVariableItems()" style="flex: 1;">
+                            🤖 生成變動項目
+                        </button>
+                        <button class="btn" onclick="createCustomVariableInputs()" style="flex: 1;">
+                            ✏️ 自訂
+                        </button>
+                    </div>
+                    <div style="margin-top: 12px;" id="variableItemsContainer">
+                        <p style="color: var(--text-secondary);">變動項目將在此顯示，點擊可編輯</p>
+                    </div>
+                </div>
+
+                <!-- Step 5: Batch Render -->
+                <div class="storyboard-step">
+                    <div class="step-title">步驟 5：批次發送</div>
+
+                    <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px;">
+                        <span style="color: var(--text-primary); font-weight: bold; min-width: 60px;">種子模式</span>
+                        <div class="mode-selector" style="flex: 1;">
+                            <button class="mode-btn active" data-seed="first-random" onclick="selectSeedMode(this)" style="font-size: 12px; padding: 6px 10px;">
+                                首張隨機
+                            </button>
+                            <button class="mode-btn" data-seed="all-random" onclick="selectSeedMode(this)" style="font-size: 12px; padding: 6px 10px;">
+                                全部隨機
+                            </button>
+                            <button class="mode-btn" data-seed="fixed" onclick="selectSeedMode(this)" style="font-size: 12px; padding: 6px 10px;">
+                                指定數值
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="config-row" style="margin-bottom: 12px;">
+                        <span class="config-label">種子值</span>
+                        <input
+                            type="number"
+                            id="seedValue"
+                            class="config-input"
+                            value="-1"
+                            disabled
+                        >
+                    </div>
+
+                    <div style="margin-top: 12px; padding: 12px; background: var(--bg-darker); border-radius: 6px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <div class="step-title" style="font-size: 14px; margin: 0;">組合預覽</div>
+                            <button class="btn" onclick="updateStoryboardPreview()" style="padding: 4px 12px; font-size: 12px;">
+                                🔄 重組提示詞
+                            </button>
+                        </div>
+                        <div id="storyboardPreview" style="font-size: 12px; color: var(--text-secondary);">
+                            完成上述步驟後，將自動組合為：風格及主體 + 變動項目 + 固定項目 + 高畫質提示詞
+                        </div>
+                    </div>
+
+                    <button class="render-btn" onclick="batchRenderNew()" style="margin-top: 12px;">
+                        🚀 批次生圖
+                    </button>
+                </div>
+            </div>
+
+            <!-- History Tab -->
+            <div class="tab-content" id="historyTab">
+                <div class="history-grid" id="historyGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox">
+        <div class="lightbox-content">
+            <button class="lightbox-close" onclick="closeLightbox()">✕ 關閉</button>
+            <button class="lightbox-nav lightbox-prev" onclick="navigateLightbox(-1)">‹</button>
+            <img class="lightbox-image" id="lightboxImage" src="" alt="">
+            <button class="lightbox-nav lightbox-next" onclick="navigateLightbox(1)">›</button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
     <script>
-    // 等待頁面載入完成
-    window.onload = function() {
-        // 初始化變數
-        var codeInput = document.getElementById('code-input');
-        var diagramOutput = document.getElementById('diagram-output');
-        var errorOutput = document.getElementById('error-output');
-        var renderBtn = document.getElementById('render-btn');
-        var clearBtn = document.getElementById('clear-btn');
-        var copyBtn = document.getElementById('copy-btn');
-        var loadExampleBtn = document.getElementById('load-example');
-        var applySettingsBtn = document.getElementById('apply-settings');
-        var exportPngBtn = document.getElementById('export-png');
-        var exportSvgBtn = document.getElementById('export-svg');
-        var exportMmdBtn = document.getElementById('export-mmd');
-        var filenameInput = document.getElementById('filename');
-        var checkSyntaxBtn = document.getElementById('check-syntax');
-        var tabButtons = document.querySelectorAll('.tab');
-        var useExampleBtns = document.querySelectorAll('.use-example');
-        
-        // 配置
-        var config = {
-            theme: 'default',
-            securityLevel: 'loose',
-            direction: 'TB',
-            layout: 'default',
-            curve: 'linear',
-            nodeSpacing: 50,
-            rankSpacing: 50,
-            actorMargin: 150,
-            arrow: 'default',
-            actorShape: 'rect',
-            classLayout: 'default',
-            classShape: 'rect',
-            ganttAxis: 'default',
-            ganttTaskSpacing: 20,
-            stateShape: 'default',
-            stateTransition: 'default',
-            stateSpacing: 40,
-            pngScale: 2,
-            pngPadding: 10,
-            diagramWidth: 800,
-            diagramHeight: 600,
-            useFixedSize: true,
-            maintainAspectRatio: false,
-            diagramScale: 1.0
+        // ==================== Global State ====================
+        const appState = {
+            selectedStyles: [],
+            selectedCharacters: [],
+            customArtists: [],
+            artistImages: {},  // Store artist preview images
+            characterDatabase: {},  // Loaded from CSV: {類別: {類型: {作品: [角色列表]}}}
+            characterCSVData: [],  // Raw CSV data
+            storyboardFrames: [],
+            storyboardMode: 'stacking',
+            seedMode: 'first-random',
+            seedValue: -1,
+            history: [],
+            lightboxIndex: 0,
+            lmStudioUrl: 'http://localhost:1234/v1/chat/completions'
         };
-        
-        // 範例代碼
-        var examples = {
-            flowchart: "graph TD\n    A[開始] --> B{是否有帳戶?}\n    B -->|是| C[登入]\n    B -->|否| D[註冊]\n    C --> E[主頁面]\n    D --> E\n    E --> F[結束]",
-            sequence: "sequenceDiagram\n    participant 客戶\n    participant 服務員\n    participant 廚師\n    \n    客戶->>服務員: 點餐\n    服務員->>廚師: 傳達訂單\n    廚師->>廚師: 準備餐點\n    廚師->>服務員: 餐點準備完成\n    服務員->>客戶: 送餐",
-            gantt: "gantt\n    title 專案時程表\n    dateFormat YYYY-MM-DD\n    section 規劃階段\n    需求分析       :a1, 2023-01-01, 7d\n    系統設計       :a2, after a1, 10d\n    section 開發階段\n    編碼實作       :a3, after a2, 15d\n    測試          :a4, after a3, 5d\n    section 部署階段\n    系統部署       :a5, after a4, 2d\n    使用者培訓     :a6, after a5, 3d",
-            class: "classDiagram\n    class 動物 {\n        +String 名稱\n        +int 年齡\n        +吃()\n        +睡覺()\n    }\n    class 狗 {\n        +String 品種\n        +吠叫()\n    }\n    class 貓 {\n        +String 毛色\n        +喵喵叫()\n    }\n    動物 <|-- 狗\n    動物 <|-- 貓",
-            state: "stateDiagram-v2\n    [*] --> 閒置\n    閒置 --> 處理中: 開始處理\n    處理中 --> 完成: 處理完成\n    處理中 --> 錯誤: 發生錯誤\n    錯誤 --> 處理中: 重試\n    完成 --> [*]"
+
+        // ==================== Toast Notification ====================
+        function showToast(message, type = 'info', duration = 3000) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, duration);
+        }
+
+        // ==================== Built-in Styles ====================
+        const builtinStyles = [
+            { name: '新海誠', tag: '@shinkai_makoto', nameEn: 'Makoto Shinkai', description: '以精緻光影、細膩背景和浪漫氛圍聞名，擅長表現天空、雲朵和城市風景' },
+            { name: '吉卜力', tag: '@studio_ghibli', nameEn: 'Studio Ghibli', description: '溫暖治癒的手繪風格，柔和的色彩和童話般的奇幻氛圍' },
+            { name: '京都動畫', tag: '@kyoto_animation', nameEn: 'Kyoto Animation', description: '精緻細膩的作畫品質，角色表情生動，色彩明亮溫暖' },
+            { name: 'CLAMP', tag: '@clamp', nameEn: 'CLAMP', description: '華麗優雅的畫風，細長身材比例，複雜精美的服飾設計' },
+            { name: '貞本義行', tag: '@sadamoto_yoshiyuki', nameEn: 'Yoshiyuki Sadamoto', description: 'EVA 角色設計師，簡潔俐落的線條，特色鮮明的人物造型' },
+            { name: '藤島康介', tag: '@fujishima_kousuke', nameEn: 'Kosuke Fujishima', description: '清新明快的畫風，角色設計優雅，機械與人物結合出色' },
+            { name: '岸本齊史', tag: '@kishimoto_masashi', nameEn: 'Masashi Kishimoto', description: '火影忍者作者，動態感強烈，忍術場景華麗' },
+            { name: '尾田榮一郎', tag: '@oda_eiichiro', nameEn: 'Eiichiro Oda', description: '航海王作者，誇張生動的角色設計，想像力豐富' },
+            { name: '鳥山明', tag: '@toriyama_akira', nameEn: 'Akira Toriyama', description: '七龍珠作者，簡潔有力的線條，經典的機械設計' },
+            { name: '高橋留美子', tag: '@takahashi_rumiko', nameEn: 'Rumiko Takahashi', description: '亂馬1/2、犬夜叉作者，幽默可愛的角色風格' },
+            { name: '荒木飛呂彥', tag: '@araki_hirohiko', nameEn: 'Hirohiko Araki', description: 'JOJO 作者，獨特時尚的姿勢和構圖，強烈的色彩對比' },
+            { name: '村田雄介', tag: '@murata_yuusuke', nameEn: 'Yusuke Murata', description: '一拳超人作畫，極致細膩的線條和動態表現' },
+            { name: '藤本樹', tag: '@fujimoto_tatsuki', nameEn: 'Tatsuki Fujimoto', description: '鏈鋸人作者，粗獷有力的畫風，電影分鏡感' },
+            { name: '吾峠呼世晴', tag: '@gotou_hitori', nameEn: 'Koyoharu Gotouge', description: '鬼滅之刃作者，和風濃厚，水彩質感' },
+            { name: '芥見下々', tag: '@akutami_gege', nameEn: 'Gege Akutami', description: '咒術迴戰作者，現代感強烈的暗黑風格' },
+            { name: '大暮維人', tag: '@oh!great', nameEn: 'Oh!great', description: '天上天下作者，細膩寫實的人體結構，服飾褶皺精美' },
+            { name: '慕夏', tag: '@alphonse_mucha', nameEn: 'Alphonse Mucha', description: '新藝術運動代表，流暢優雅的線條，華麗的裝飾圖案，充滿女性柔美氣質' },
+            { name: '畢卡索', tag: '@pablo_picasso', nameEn: 'Pablo Picasso', description: '立體主義創始人，幾何化的造型，多視角的構圖，色彩大膽強烈' },
+            { name: '梵谷', tag: '@vincent_van_gogh', nameEn: 'Vincent van Gogh', description: '後印象派大師，濃烈的色彩，富有動感的筆觸，情感強烈表現' },
+            { name: '莫內', tag: '@claude_monet', nameEn: 'Claude Monet', description: '印象派創始人，光影變化細膩，色彩明亮柔和，捕捉瞬間的光線氛圍' },
+            { name: '達利', tag: '@salvador_dali', nameEn: 'Salvador Dali', description: '超現實主義大師，夢幻奇異的意象，精細寫實的技法，象徵主義濃厚' },
+            { name: '安迪沃荷', tag: '@andy_warhol', nameEn: 'Andy Warhol', description: '普普藝術代表，鮮豔的平面色彩，重複圖案，大眾文化元素' },
+            { name: '克林姆', tag: '@gustav_klimt', nameEn: 'Gustav Klimt', description: '維也納分離派，金箔裝飾華麗，圖案繁複精美，充滿象徵意涵' },
+            { name: '蒙克', tag: '@edvard_munch', nameEn: 'Edvard Munch', description: '表現主義先驅，扭曲的線條，強烈的情緒表達，色彩象徵內心焦慮' }
+        ];
+
+        // ==================== Character Database ====================
+        // Character database will be loaded from CSV
+
+        // ==================== Initialization ====================
+        window.onload = function() {
+            initializeApp();
+            loadHistory();
+            testConnection();
         };
-        
-        // 初始化 Mermaid
-        var mermaidInitialized = false;
-        function initializeMermaid() {
-            try {
-                // 檢查 mermaid 是否已定義
-                if (typeof mermaid === 'undefined') {
-                    console.warn("Mermaid 庫尚未載入，將在載入後初始化");
-                    window.mermaidInitialized = true; // 設定標記，讓備用載入機制知道要初始化
-                    showError("Mermaid 庫載入中，請稍等片刻再試...");
-                    return false;
-                }
-                
-                mermaid.initialize({
-                    startOnLoad: false,
-                    theme: config.theme,
-                    securityLevel: config.securityLevel,
-                    flowchart: {
-                        curve: config.curve,
-                        nodeSpacing: config.nodeSpacing,
-                        rankSpacing: config.rankSpacing
-                    },
-                    sequence: {
-                        actorMargin: config.actorMargin
-                    }
-                });
-                mermaidInitialized = true;
-                // 檢查版本信息 - 兼容不同的 Mermaid 版本
-                var versionInfo = "";
-                if (typeof mermaid.version === 'function') {
-                    versionInfo = mermaid.version();
-                } else if (typeof mermaid.version === 'string') {
-                    versionInfo = mermaid.version;
-                } else {
-                    versionInfo = "未知";
-                }
-                console.log("Mermaid 初始化成功，版本:", versionInfo);
-                return true;
-            } catch (error) {
-                console.error("Mermaid 初始化錯誤:", error);
-                showError("Mermaid 初始化錯誤: " + error.message);
-                return false;
-            }
-        }
-        
-        // 顯示錯誤訊息
-        function showError(message, lineNumber) {
-            errorOutput.innerHTML = "";
-            var errorDiv = document.createElement('div');
-            errorDiv.className = 'error-message';
-            
-            if (lineNumber !== undefined) {
-                var lines = codeInput.value.split('\n');
-                var errorContext = "";
-                
-                var startLine = Math.max(0, lineNumber - 2);
-                var endLine = Math.min(lines.length - 1, lineNumber + 2);
-                
-                for (var i = startLine; i <= endLine; i++) {
-                    if (i === lineNumber) {
-                        errorContext += (i + 1) + ": " + lines[i] + " <-- 可能的錯誤在此行\n";
-                    } else {
-                        errorContext += (i + 1) + ": " + lines[i] + "\n";
-                    }
-                }
-                
-                errorDiv.innerHTML = "<strong>錯誤:</strong> " + message + "\n\n<strong>錯誤位置附近:</strong>\n" + errorContext;
-            } else {
-                errorDiv.textContent = "錯誤: " + message;
-            }
-            
-            errorOutput.appendChild(errorDiv);
-        }
-        
-        // 顯示成功訊息
-        function showSuccess(message) {
-            errorOutput.innerHTML = "";
-            var successDiv = document.createElement('div');
-            successDiv.className = 'info-message';
-            successDiv.textContent = message;
-            errorOutput.appendChild(successDiv);
-        }
-        
-        // 載入隨機範例
-        function loadRandomExample() {
-            var types = Object.keys(examples);
-            var randomType = types[Math.floor(Math.random() * types.length)];
-            codeInput.value = examples[randomType];
-            renderDiagram();
-        }
-        
-        // 檢查語法
-        function checkSyntax() {
-            try {
-                var code = codeInput.value.trim();
-                if (!code) {
-                    showError("請輸入 MERMAID 語法來檢查");
-                    return;
-                }
-                
-                // 使用 Mermaid 的解析函數來檢查語法
-                mermaid.parse(code);
-                showSuccess("語法檢查通過！圖表語法正確。");
-                return true;
-            } catch (error) {
-                console.error("語法檢查錯誤:", error);
-                
-                // 嘗試獲取錯誤行號
-                var lineMatch = error.message.match(/Line (\d+)/i);
-                var lineNumber = lineMatch ? parseInt(lineMatch[1]) - 1 : undefined;
-                
-                showError("語法錯誤: " + error.message, lineNumber);
-                return false;
-            }
-        }
-        
-        // 渲染圖表
-        function renderDiagram() {
-            try {
-                // 確保 Mermaid 已初始化
-                if (!mermaidInitialized && !initializeMermaid()) {
-                    return; // 如果初始化失敗則退出
-                }
-                
-                var code = codeInput.value.trim();
-                if (!code) {
-                    diagramOutput.innerHTML = "<p>請輸入 MERMAID 語法來繪製圖表</p>";
-                    errorOutput.innerHTML = "";
-                    return;
-                }
-                
-                // 清除舊的圖表和錯誤訊息
-                diagramOutput.innerHTML = "";
-                errorOutput.innerHTML = "";
-                
-                // 創建容器包裝
-                var wrapperContainer = document.createElement('div');
-                wrapperContainer.className = 'diagram-container';
-                
-                // 如果使用固定尺寸，則設置容器大小
-                if (config.useFixedSize) {
-                    wrapperContainer.style.width = config.diagramWidth + 'px';
-                    wrapperContainer.style.height = config.diagramHeight + 'px';
-                }
-                
-                // 創建新的Mermaid容器
-                var container = document.createElement('div');
-                container.className = 'mermaid';
-                container.textContent = code;
-                
-                // 如果設置了縮放，應用縮放
-                if (config.diagramScale !== 1.0) {
-                    container.style.transform = 'scale(' + config.diagramScale + ')';
-                    container.style.transformOrigin = 'top left';
-                }
-                
-                wrapperContainer.appendChild(container);
-                diagramOutput.appendChild(wrapperContainer);
-                
-                // 渲染新圖表
-                mermaid.init(undefined, document.querySelectorAll('.mermaid'));
-                
-                // 渲染完成後調整SVG大小
-                setTimeout(function() {
-                    var svgElement = container.querySelector('svg');
-                    if (svgElement && config.useFixedSize) {
-                        if (config.maintainAspectRatio) {
-                            // 保持比例的情況下調整大小
-                            var originalWidth = svgElement.viewBox.baseVal.width;
-                            var originalHeight = svgElement.viewBox.baseVal.height;
-                            var widthRatio = config.diagramWidth / originalWidth;
-                            var heightRatio = config.diagramHeight / originalHeight;
-                            var ratio = Math.min(widthRatio, heightRatio);
-                            
-                            svgElement.style.width = (originalWidth * ratio) + 'px';
-                            svgElement.style.height = (originalHeight * ratio) + 'px';
-                            svgElement.style.display = 'block';
-                            svgElement.style.margin = '0 auto';
-                        } else {
-                            // 直接設置寬高
-                            svgElement.style.width = '100%';
-                            svgElement.style.height = '100%';
-                        }
-                    }
-                }, 100); // 給渲染一點時間
-                
-            } catch (error) {
-                console.error("渲染圖表錯誤:", error);
-                
-                // 嘗試獲取錯誤行號
-                var lineMatch = error.message.match(/Line (\d+)/i);
-                var lineNumber = lineMatch ? parseInt(lineMatch[1]) - 1 : undefined;
-                
-                showError("渲染錯誤: " + error.message, lineNumber);
-            }
-        }
-        
-        // 設定標籤切換
-        function setupTabs() {
-            tabButtons.forEach(function(button) {
-                button.addEventListener('click', function() {
-                    // 移除所有active類
-                    tabButtons.forEach(function(btn) {
-                        btn.classList.remove('active');
-                    });
-                    
-                    // 隱藏所有內容
-                    document.querySelectorAll('.tab-content').forEach(function(content) {
-                        content.classList.remove('active');
-                    });
-                    
-                    // 激活當前標籤和內容
-                    this.classList.add('active');
-                    var tabId = this.getAttribute('data-tab') + '-tab';
-                    document.getElementById(tabId).classList.add('active');
-                });
-            });
-        }
-        
-        // 設定使用範例按鈕
-        function setupExampleButtons() {
-            useExampleBtns.forEach(function(button) {
-                button.addEventListener('click', function() {
-                    var type = this.getAttribute('data-type');
-                    if (examples[type]) {
-                        codeInput.value = examples[type];
-                        renderDiagram();
-                        
-                        // 激活相應標籤
-                        var tabToShow = 'basic';
-                        if (type === 'flowchart') tabToShow = 'flowchart';
-                        else if (type === 'sequence') tabToShow = 'sequence';
-                        else if (type === 'class') tabToShow = 'class';
-                        else if (type === 'gantt') tabToShow = 'gantt';
-                        else if (type === 'state') tabToShow = 'state';
-                        
-                        document.querySelector('.tab[data-tab="' + tabToShow + '"]').click();
-                    }
-                });
-            });
-        }
-        
-        // 應用設定
-        function applySettings() {
-            // 基本設定
-            config.theme = document.getElementById('theme-select').value;
-            config.securityLevel = document.getElementById('security-level').value;
-            
-            // 圖表尺寸設定
-            config.diagramWidth = parseInt(document.getElementById('diagram-width').value);
-            config.diagramHeight = parseInt(document.getElementById('diagram-height').value);
-            config.useFixedSize = document.getElementById('use-fixed-size').checked;
-            config.maintainAspectRatio = document.getElementById('maintain-aspect-ratio').checked;
-            config.diagramScale = parseFloat(document.getElementById('diagram-scale').value);
-            
-            // 流程圖設定
-            config.direction = document.getElementById('direction-select').value;
-            config.layout = document.getElementById('layout-select').value;
-            config.curve = document.getElementById('curve-select').value;
-            config.nodeSpacing = parseInt(document.getElementById('node-spacing').value);
-            config.rankSpacing = parseInt(document.getElementById('rank-spacing').value);
-            
-            // 序列圖設定
-            config.actorMargin = parseInt(document.getElementById('actor-margin').value);
-            config.arrow = document.getElementById('arrow-select').value;
-            config.actorShape = document.getElementById('actor-shape').value;
-            
-            // 類別圖設定
-            config.classLayout = document.getElementById('class-layout').value;
-            config.classShape = document.getElementById('class-shape').value;
-            
-            // 甘特圖設定
-            config.ganttAxis = document.getElementById('gantt-axis').value;
-            config.ganttTaskSpacing = parseInt(document.getElementById('gantt-task-spacing').value);
-            
-            // 狀態圖設定
-            config.stateShape = document.getElementById('state-shape').value;
-            config.stateTransition = document.getElementById('state-transition').value;
-            config.stateSpacing = parseInt(document.getElementById('state-spacing').value);
-            
-            // PNG匯出設定
-            config.pngScale = parseFloat(document.getElementById('png-scale').value);
-            config.pngPadding = parseInt(document.getElementById('png-padding').value);
-            
-            // 確保 Mermaid 已初始化
-            if (!mermaidInitialized && !initializeMermaid()) {
-                return; // 如果初始化失敗則退出
-            }
-            
-            // 更新 Mermaid 配置
-            var mermaidConfig = {
-                startOnLoad: false,
-                theme: config.theme,
-                securityLevel: config.securityLevel,
-                flowchart: {
-                    curve: config.curve,
-                    nodeSpacing: config.nodeSpacing,
-                    rankSpacing: config.rankSpacing
-                },
-                sequence: {
-                    actorMargin: config.actorMargin
-                }
-            };
-            
-            try {
-                mermaid.initialize(mermaidConfig);
-                
-                // 修改流程圖方向 (更穩健的方法)
-                var code = codeInput.value;
-                var graphDirectionRegex = /^(\s*graph\s+)(TD|TB|BT|LR|RL)/m;
-                if (graphDirectionRegex.test(code)) {
-                    codeInput.value = code.replace(graphDirectionRegex, '$1' + config.direction);
-                }
-                
-                renderDiagram();
-                showSuccess('設定已套用');
-            } catch (error) {
-                console.error("套用設定錯誤:", error);
-                showError('套用設定時發生錯誤: ' + error.message);
-            }
-        }
-        
-        // 匯出為 PNG
-        function exportPNG() {
-            try {
-                var svgElement = document.querySelector('.mermaid svg');
-                if (!svgElement) {
-                    showError('請先繪製圖表');
-                    return;
-                }
-                
-                // 複製一個SVG元素用於調整
-                var svgClone = svgElement.cloneNode(true);
-                var bbox = svgElement.getBBox();
-                
-                // 調整SVG大小，增加邊距
-                var padding = config.pngPadding;
-                svgClone.setAttribute('width', bbox.width + padding * 2);
-                svgClone.setAttribute('height', bbox.height + padding * 2);
-                svgClone.setAttribute('viewBox', `${bbox.x - padding} ${bbox.y - padding} ${bbox.width + padding * 2} ${bbox.height + padding * 2}`);
-                
-                var svgData = new XMLSerializer().serializeToString(svgClone);
-                var svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
-                var DOMURL = window.URL || window.webkitURL || window;
-                var url = DOMURL.createObjectURL(svgBlob);
-                
-                var img = new Image();
-                img.onload = function() {
-                    var canvas = document.createElement('canvas');
-                    var scale = config.pngScale;
-                    canvas.width = (bbox.width + padding * 2) * scale;
-                    canvas.height = (bbox.height + padding * 2) * scale;
-                    var ctx = canvas.getContext('2d');
-                    ctx.fillStyle = 'white';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    ctx.scale(scale, scale);
-                    ctx.drawImage(img, 0, 0);
-                    
-                    canvas.toBlob(function(blob) {
-                        saveAs(blob, filenameInput.value + '.png');
-                    });
-                    
-                    DOMURL.revokeObjectURL(url);
+
+        function initializeApp() {
+            // Render builtin styles
+            renderBuiltinStyles();
+
+            // Character database will be loaded from CSV
+
+            // Set up file upload handlers
+            document.getElementById('csvUpload').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    parseArtistCSV(event.target.result);
+                    showToast(`已載入 ${appState.customArtists.length} 個藝術家風格`, 'success');
                 };
-                img.src = url;
-            } catch (error) {
-                console.error("匯出 PNG 錯誤:", error);
-                showError('匯出 PNG 時發生錯誤: ' + error.message);
-            }
-        }
-        
-        // 匯出為 SVG
-        function exportSVG() {
-            try {
-                var svgElement = document.querySelector('.mermaid svg');
-                if (!svgElement) {
-                    showError('請先繪製圖表');
+                reader.readAsText(file);
+            });
+
+            document.getElementById('zipUpload').addEventListener('change', async function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                if (!file.name.toLowerCase().endsWith('.zip')) {
+                    showToast('請選擇 ZIP 檔案', 'error');
                     return;
                 }
-                
-                // 複製一個SVG元素用於調整
-                var svgClone = svgElement.cloneNode(true);
-                var bbox = svgElement.getBBox();
-                
-                // 調整SVG大小，增加邊距
-                var padding = config.pngPadding;
-                svgClone.setAttribute('width', bbox.width + padding * 2);
-                svgClone.setAttribute('height', bbox.height + padding * 2);
-                svgClone.setAttribute('viewBox', `${bbox.x - padding} ${bbox.y - padding} ${bbox.width + padding * 2} ${bbox.height + padding * 2}`);
-                
-                var svgData = new XMLSerializer().serializeToString(svgClone);
-                var svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
-                saveAs(svgBlob, filenameInput.value + '.svg');
-            } catch (error) {
-                console.error("匯出 SVG 錯誤:", error);
-                showError('匯出 SVG 時發生錯誤: ' + error.message);
-            }
-        }
-        
-        // 匯出為 MMD
-        function exportMMD() {
-            try {
-                var code = codeInput.value.trim();
-                if (!code) {
-                    showError('請先輸入 MERMAID 語法');
-                    return;
+
+                try {
+                    if (typeof JSZip === 'undefined') {
+                        showToast('JSZip 庫未載入，請重新整理頁面後再試', 'error');
+                        return;
+                    }
+
+                    await parseZipFile(file);
+                    showToast('圖片載入完成', 'success');
+                } catch (error) {
+                    showToast('ZIP 檔案讀取失敗: ' + error.message, 'error');
                 }
-                
-                var blob = new Blob([code], {type: 'text/plain;charset=utf-8'});
-                saveAs(blob, filenameInput.value + '.mmd');
-            } catch (error) {
-                console.error("匯出 MMD 錯誤:", error);
-                showError('匯出 MMD 時發生錯誤: ' + error.message);
-            }
-        }
-        
-        // 設定尺寸相關事件
-        function setupSizeControls() {
-            var diagramWidth = document.getElementById('diagram-width');
-            var diagramHeight = document.getElementById('diagram-height');
-            var useFixedSize = document.getElementById('use-fixed-size');
-            var maintainAspectRatio = document.getElementById('maintain-aspect-ratio');
-            var diagramScale = document.getElementById('diagram-scale');
-            var scaleValue = document.getElementById('scale-value');
-            
-            // 更新縮放比例顯示
-            diagramScale.addEventListener('input', function() {
-                var value = parseFloat(this.value).toFixed(1);
-                scaleValue.textContent = value;
             });
-            
-            // 固定尺寸選項切換
-            useFixedSize.addEventListener('change', function() {
-                diagramWidth.disabled = !this.checked;
-                diagramHeight.disabled = !this.checked;
-                maintainAspectRatio.disabled = !this.checked;
-            });
-            
-            // 初始狀態
-            diagramWidth.value = config.diagramWidth;
-            diagramHeight.value = config.diagramHeight;
-            useFixedSize.checked = config.useFixedSize;
-            maintainAspectRatio.checked = config.maintainAspectRatio;
-            diagramScale.value = config.diagramScale;
-            scaleValue.textContent = config.diagramScale.toFixed(1);
-            
-            // 如果不使用固定尺寸，禁用相關控制項
-            if (!config.useFixedSize) {
-                diagramWidth.disabled = true;
-                diagramHeight.disabled = true;
-                maintainAspectRatio.disabled = true;
+
+            // Auto-test connection every 30 seconds
+            setInterval(testConnection, 30000);
+
+            // Load history from localStorage
+            const savedHistory = localStorage.getItem('starHistory');
+            if (savedHistory) {
+                appState.history = JSON.parse(savedHistory);
+                renderHistory();
             }
         }
 
-        // 綁定事件
-        renderBtn.addEventListener('click', renderDiagram);
-        clearBtn.addEventListener('click', function() {
-            codeInput.value = '';
-            diagramOutput.innerHTML = '<p>請輸入 MERMAID 語法來繪製圖表</p>';
-            errorOutput.innerHTML = '';
-        });
-        copyBtn.addEventListener('click', function() {
-            codeInput.select();
+        // ==================== File Upload Helpers ====================
+        function parseArtistCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            appState.customArtists = [];
+
+            lines.forEach((line, index) => {
+                if (!line.trim()) return;
+
+                if (line.includes(',')) {
+                    const [name, tag] = line.split(',').map(s => s.trim());
+                    appState.customArtists.push({ name, tag, nameEn: name });
+                } else {
+                    let name = line.trim();
+                    let tag = name.replace(/^@/, '').replace(/\s+/g, '_').toLowerCase();
+                    tag = '@' + tag;
+                    appState.customArtists.push({ name, tag, nameEn: name });
+                }
+            });
+
+            if (appState.customArtists.length === 0) {
+                appState.displayedCustomArtists = [];
+            } else {
+                randomCustomStyles();
+            }
+
+            renderCustomStyles();
+        }
+
+        async function parseZipFile(blob) {
+            if (typeof JSZip === 'undefined') {
+                showToast('JSZip 庫未載入，請重新整理頁面後再試', 'error');
+                return;
+            }
+
+            const zip = new JSZip();
+            const zipContent = await zip.loadAsync(blob);
+
+            const imageFiles = Object.keys(zipContent.files).filter(name =>
+                /\.(jpg|jpeg|png|gif|webp)$/i.test(name) && !name.startsWith('__MACOSX')
+            );
+
+            for (const imagePath of imageFiles) {
+                const file = zipContent.files[imagePath];
+                if (file.dir) continue;
+
+                const imageData = await file.async('base64');
+                const ext = imagePath.split('.').pop().toLowerCase();
+                const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+                const dataUrl = `data:${mimeType};base64,${imageData}`;
+
+                const imageName = imagePath.split('/').pop().replace(/\.[^.]+$/, '');
+
+                let bestMatch = null;
+                let bestScore = 0;
+
+                appState.customArtists.forEach(artist => {
+                    const artistName = artist.name.toLowerCase().replace(/\s+/g, '');
+                    const imageNameLower = imageName.toLowerCase().replace(/\s+/g, '');
+
+                    const distance = levenshteinDistance(artistName, imageNameLower);
+                    const maxLen = Math.max(artistName.length, imageNameLower.length);
+                    const similarity = 1 - (distance / maxLen);
+
+                    if (similarity > bestScore) {
+                        bestScore = similarity;
+                        bestMatch = artist;
+                    }
+                });
+
+                if (bestMatch && bestScore > 0.7) {
+                    appState.artistImages[bestMatch.name] = dataUrl;
+                }
+            }
+
+            renderCustomStyles();
+        }
+
+        function levenshteinDistance(str1, str2) {
+            const matrix = [];
+
+            for (let i = 0; i <= str2.length; i++) {
+                matrix[i] = [i];
+            }
+
+            for (let j = 0; j <= str1.length; j++) {
+                matrix[0][j] = j;
+            }
+
+            for (let i = 1; i <= str2.length; i++) {
+                for (let j = 1; j <= str1.length; j++) {
+                    if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            matrix[i][j - 1] + 1,
+                            matrix[i - 1][j] + 1
+                        );
+                    }
+                }
+            }
+
+            return matrix[str2.length][str1.length];
+        }
+
+        // ==================== Style Functions ====================
+        function renderBuiltinStyles() {
+            const container = document.getElementById('builtinStyles');
+            container.innerHTML = '';
+
+            builtinStyles.forEach(style => {
+                const card = document.createElement('div');
+                card.className = 'style-card';
+                card.onclick = () => toggleStyle(style);
+
+                const tooltip = style.description ? `<div class="style-tooltip">${style.description}</div>` : '';
+
+                card.innerHTML = `
+                    ${tooltip}
+                    <div class="style-card-name">${style.name}</div>
+                    <div class="style-card-tag">${style.tag}</div>
+                `;
+
+                if (appState.selectedStyles.find(s => s.tag === style.tag)) {
+                    card.classList.add('selected');
+                }
+
+                container.appendChild(card);
+            });
+        }
+
+        function toggleStyle(style) {
+            const editor = document.getElementById('promptEditor');
+            const index = appState.selectedStyles.findIndex(s => s.tag === style.tag);
+
+            if (index >= 0) {
+                // Remove style
+                appState.selectedStyles.splice(index, 1);
+                // Remove tag from prompt
+                removeTagFromPrompt(style.tag);
+            } else {
+                // Add style
+                appState.selectedStyles.push(style);
+                // Insert tag at the beginning of prompt
+                insertStyleTagAtStart(style.tag);
+            }
+
+            updateStyleTags();
+            renderBuiltinStyles();
+        }
+
+        function insertStyleTagAtStart(tag) {
+            const editor = document.getElementById('promptEditor');
+            let currentPrompt = editor.value.trim();
+
+            // Check if tag already exists
+            if (currentPrompt.includes(tag)) return;
+
+            // Insert at the beginning
+            if (currentPrompt) {
+                editor.value = tag + ', ' + currentPrompt;
+            } else {
+                editor.value = tag + ', ';
+            }
+        }
+
+        function removeTagFromPrompt(tag) {
+            const editor = document.getElementById('promptEditor');
+            let currentPrompt = editor.value;
+
+            // Escape special regex characters in tag
+            const escapedTag = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+            // Remove tag with various formats: "tag, ", ", tag, ", ", tag"
+            currentPrompt = currentPrompt.replace(new RegExp(escapedTag + ',\\s*', 'g'), '');
+            currentPrompt = currentPrompt.replace(new RegExp(',\\s*' + escapedTag, 'g'), '');
+            currentPrompt = currentPrompt.replace(new RegExp(escapedTag, 'g'), '');
+
+            // Clean up multiple commas and spaces
+            currentPrompt = currentPrompt.replace(/,\s*,/g, ',');
+            currentPrompt = currentPrompt.replace(/^\s*,\s*/, '');
+            currentPrompt = currentPrompt.replace(/,\s*$/, '');
+
+            editor.value = currentPrompt.trim();
+        }
+
+        function updateStyleTags() {
+            const container = document.getElementById('styleTags');
+            container.innerHTML = '';
+
+            appState.selectedStyles.forEach(style => {
+                const tag = document.createElement('div');
+                tag.className = 'tag style-tag';
+                tag.innerHTML = `
+                    <span>${style.name} ${style.tag}</span>
+                    <span class="tag-remove" onclick="removeStyle('${style.tag}')">✕</span>
+                `;
+                container.appendChild(tag);
+            });
+        }
+
+        function removeStyle(tagValue) {
+            appState.selectedStyles = appState.selectedStyles.filter(s => s.tag !== tagValue);
+            updateStyleTags();
+            renderBuiltinStyles();
+            removeTagFromPrompt(tagValue);
+        }
+
+        function randomStyle() {
+            if (appState.customArtists.length === 0) {
+                showToast('請先上傳 Artist Tag CSV 檔案', 'error');
+                return;
+            }
+
+            const randomArtist = appState.customArtists[
+                Math.floor(Math.random() * appState.customArtists.length)
+            ];
+
+            toggleStyle(randomArtist);
+        }
+
+        // ==================== Character Functions ====================
+        // CSV Format: 類別,類型,作品中文名,作品英文名,角色英文名,角色中文名
+        function loadCharacterCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                parseCharacterCSV(text);
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCharacterCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            appState.characterCSVData = [];
+            appState.characterDatabase = {};
+
+            lines.forEach((line, index) => {
+                if (index === 0 && line.includes('類別')) return; // Skip header
+
+                const parts = line.split(',').map(s => s.trim());
+                if (parts.length < 6) return;
+
+                const [category, type, worksCn, worksEn, charEn, charCn] = parts;
+
+                // Store raw data
+                appState.characterCSVData.push({ category, type, worksCn, worksEn, charEn, charCn });
+
+                // Build hierarchy: {類別: {類型: {作品中文名: [{worksEn, charEn, charCn}]}}}
+                if (!appState.characterDatabase[category]) {
+                    appState.characterDatabase[category] = {};
+                }
+                if (!appState.characterDatabase[category][type]) {
+                    appState.characterDatabase[category][type] = {};
+                }
+                if (!appState.characterDatabase[category][type][worksCn]) {
+                    appState.characterDatabase[category][type][worksCn] = [];
+                }
+
+                appState.characterDatabase[category][type][worksCn].push({
+                    worksEn,
+                    charEn,
+                    charCn
+                });
+            });
+
+            initializeCharacterFilters();
+            showToast(`已載入 ${appState.characterCSVData.length} 個角色`, 'success');
+        }
+
+        function initializeCharacterFilters() {
+            const categoryFilter = document.getElementById('categoryFilter');
+            const categories = Object.keys(appState.characterDatabase);
+
+            categoryFilter.innerHTML = '<option value="">選擇類別</option>';
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                categoryFilter.appendChild(option);
+            });
+
+            // Reset other filters
+            document.getElementById('typeFilter').innerHTML = '<option value="">選擇類型</option>';
+            document.getElementById('worksFilter').innerHTML = '<option value="">選擇作品</option>';
+            document.getElementById('characterList').innerHTML = '<p style="color: var(--text-secondary);">請選擇類別、類型、作品以顯示角色</p>';
+        }
+
+        function updateTypeFilter() {
+            const categoryFilter = document.getElementById('categoryFilter');
+            const typeFilter = document.getElementById('typeFilter');
+            const category = categoryFilter.value;
+
+            typeFilter.innerHTML = '<option value="">選擇類型</option>';
+            document.getElementById('worksFilter').innerHTML = '<option value="">選擇作品</option>';
+
+            if (category && appState.characterDatabase[category]) {
+                const types = Object.keys(appState.characterDatabase[category]);
+                types.forEach(t => {
+                    const option = document.createElement('option');
+                    option.value = t;
+                    option.textContent = t;
+                    typeFilter.appendChild(option);
+                });
+            }
+
+            updateCharacterList();
+        }
+
+        function updateWorksFilter() {
+            const categoryFilter = document.getElementById('categoryFilter');
+            const typeFilter = document.getElementById('typeFilter');
+            const worksFilter = document.getElementById('worksFilter');
+
+            const category = categoryFilter.value;
+            const type = typeFilter.value;
+
+            worksFilter.innerHTML = '<option value="">選擇作品</option>';
+
+            if (category && type && appState.characterDatabase[category] && appState.characterDatabase[category][type]) {
+                const works = Object.keys(appState.characterDatabase[category][type]);
+                works.forEach(w => {
+                    const option = document.createElement('option');
+                    option.value = w;
+                    option.textContent = w;
+                    worksFilter.appendChild(option);
+                });
+            }
+
+            updateCharacterList();
+        }
+
+        function updateCharacterList() {
+            const categoryFilter = document.getElementById('categoryFilter');
+            const typeFilter = document.getElementById('typeFilter');
+            const worksFilter = document.getElementById('worksFilter');
+            const characterList = document.getElementById('characterList');
+
+            const category = categoryFilter.value;
+            const type = typeFilter.value;
+            const works = worksFilter.value;
+
+            characterList.innerHTML = '';
+
+            if (!category || !type || !works) {
+                characterList.innerHTML = '<p style="color: var(--text-secondary);">請選擇類別、類型、作品以顯示角色</p>';
+                return;
+            }
+
+            const characters = appState.characterDatabase[category][type][works];
+
+            if (!characters || characters.length === 0) {
+                characterList.innerHTML = '<p style="color: var(--text-secondary);">此作品暫無角色資料</p>';
+                return;
+            }
+
+            characters.forEach(char => {
+                const item = document.createElement('div');
+                item.className = 'character-item';
+                item.onclick = () => addCharacter(char);
+
+                const displayTag = '#' + char.charEn;
+
+                item.innerHTML = `
+                    <div class="character-name">${char.charCn}</div>
+                    <div class="character-series">${displayTag}</div>
+                `;
+
+                characterList.appendChild(item);
+            });
+        }
+
+        function addCharacter(character) {
+            // Check if should include series tag
+            const includeSeriesTag = document.getElementById('includeSeriesTag').checked;
+
+            // Create proper tag format from CSV data
+            const charWithTag = {
+                name: character.charCn,
+                tag: '#' + character.charEn,
+                seriesTag: includeSeriesTag ? '#' + character.worksEn : null,
+                en: character.charEn,
+                seriesEn: character.worksEn
+            };
+
+            const exists = appState.selectedCharacters.find(c => c.tag === charWithTag.tag);
+            if (exists) {
+                showToast('此角色已經加入', 'info');
+                return;
+            }
+
+            appState.selectedCharacters.push(charWithTag);
+            updateCharacterTags();
+
+            // Insert tags at cursor (series tag first if enabled, then character tag)
+            if (includeSeriesTag && charWithTag.seriesTag) {
+                insertCharacterTagAtCursor(charWithTag.seriesTag + ', ' + charWithTag.tag);
+            } else {
+                insertCharacterTagAtCursor(charWithTag.tag);
+            }
+
+            showToast(`已加入 ${character.charCn}`, 'success');
+        }
+
+        function insertCharacterTagAtCursor(tag) {
+            const editor = document.getElementById('promptEditor');
+
+            // Check if tag already exists
+            if (editor.value.includes(tag)) return;
+
+            // Get cursor position
+            const cursorPos = editor.selectionStart;
+            const textBefore = editor.value.substring(0, cursorPos);
+            const textAfter = editor.value.substring(cursorPos);
+
+            // Insert tag at cursor position
+            if (cursorPos === 0) {
+                // At the beginning
+                if (textAfter) {
+                    editor.value = tag + ', ' + textAfter;
+                } else {
+                    editor.value = tag + ', ';
+                }
+            } else {
+                // In the middle or at the end
+                const needsCommaBefore = textBefore.trim() && !textBefore.trim().endsWith(',');
+                const needsCommaAfter = textAfter.trim() && !textAfter.trim().startsWith(',');
+
+                let insertion = tag;
+                if (needsCommaBefore) insertion = ', ' + insertion;
+                if (needsCommaAfter) insertion = insertion + ', ';
+                else if (!textAfter.trim()) insertion = insertion + ', ';
+
+                editor.value = textBefore + insertion + textAfter;
+            }
+
+            // Set cursor position after inserted tag
+            const newCursorPos = cursorPos + tag.length + (cursorPos === 0 ? 2 : (textBefore.trim() && !textBefore.trim().endsWith(',') ? 4 : 2));
+            editor.setSelectionRange(newCursorPos, newCursorPos);
+        }
+
+        function updateCharacterTags() {
+            const container = document.getElementById('characterTags');
+            container.innerHTML = '';
+
+            appState.selectedCharacters.forEach(char => {
+                const tag = document.createElement('div');
+                tag.className = 'tag character-tag';
+                const displayTag = char.seriesTag ? `${char.seriesTag}, ${char.tag}` : char.tag;
+                tag.innerHTML = `
+                    <span>${char.name} ${displayTag}</span>
+                    <span class="tag-remove" onclick="removeCharacter('${char.tag}', '${char.seriesTag || ''}')">✕</span>
+                `;
+                container.appendChild(tag);
+            });
+        }
+
+        function removeCharacter(tagValue, seriesTagValue) {
+            appState.selectedCharacters = appState.selectedCharacters.filter(c => c.tag !== tagValue);
+            updateCharacterTags();
+
+            // Remove character tag
+            removeTagFromPrompt(tagValue);
+
+            // Remove series tag if it exists
+            if (seriesTagValue && seriesTagValue !== 'null') {
+                removeTagFromPrompt(seriesTagValue);
+            }
+        }
+
+        // ==================== Prompt Functions ====================
+        function updatePrompt() {
+            const editor = document.getElementById('promptEditor');
+
+            let prompt = '';
+
+            // Add style tags
+            if (appState.selectedStyles.length > 0) {
+                prompt += appState.selectedStyles.map(s => s.tag).join(', ') + ', ';
+            }
+
+            // Add character tags
+            if (appState.selectedCharacters.length > 0) {
+                prompt += appState.selectedCharacters.map(c => c.tag).join(', ') + ', ';
+            }
+
+            // Keep existing description
+            const currentPrompt = editor.value;
+            const descMatch = currentPrompt.match(/[^@#][^,]*/g);
+            if (descMatch) {
+                prompt += descMatch.filter(d => d.trim()).join(', ');
+            }
+
+            editor.value = prompt.trim();
+        }
+
+        function clearPrompt() {
+            if (!confirm('確定要清空提示詞嗎？（將保留已選標籤）')) return;
+
+            document.getElementById('promptEditor').value = '';
+            updatePrompt();
+        }
+
+        function copyPrompt() {
+            const editor = document.getElementById('promptEditor');
+            editor.select();
             document.execCommand('copy');
-            showSuccess('已複製語法到剪貼簿');
+            showToast('已複製到剪貼簿', 'success');
+        }
+
+        function addQualityTags() {
+            const editor = document.getElementById('promptEditor');
+            const qualityTags = 'masterpiece, best quality, ultra-detailed, 8k, high resolution, sharp focus';
+
+            let currentPrompt = editor.value.trim();
+
+            // Check if quality tags already exist
+            if (currentPrompt.includes('masterpiece') || currentPrompt.includes('best quality')) {
+                showToast('高畫質提示詞已存在', 'info');
+                return;
+            }
+
+            // Add quality tags at the end
+            if (currentPrompt) {
+                editor.value = currentPrompt + ', ' + qualityTags;
+            } else {
+                editor.value = qualityTags;
+            }
+
+            showToast('已添加高畫質提示詞', 'success');
+        }
+
+        // ==================== AI Generation ====================
+        async function generatePrompt() {
+            const input = document.getElementById('aiInput').value.trim();
+
+            if (!input) {
+                showToast('請輸入描述', 'info');
+                return;
+            }
+
+            // Find the button that triggered this function
+            const btn = document.querySelector('.generate-btn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ 生成中...';
+
+            try {
+                const systemPrompt = `You are a prompt generator for NetaYume Lumina, an anime-style AI art model.
+
+Rules:
+1. Character tags MUST use # prefix (e.g., #kaname_madoka)
+2. Artist/style tags MUST use @ prefix (e.g., @shinkai_makoto)
+3. Generate natural, detailed English descriptions
+4. Focus on visual elements: pose, expression, clothing, lighting, atmosphere
+5. Keep tags lowercase with underscores
+6. Output format: tags first, then description
+
+Example output:
+#mouri_ran, @kyoto_animation, 1girl, long hair, blue eyes, standing in garden, soft sunlight, gentle smile, white dress, flowers blooming, peaceful atmosphere`;
+
+                const response = await fetch(appState.lmStudioUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: "local-model",
+                        messages: [
+                            { role: "system", content: systemPrompt },
+                            { role: "user", content: input }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 500
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('LM Studio 連線失敗');
+                }
+
+                const data = await response.json();
+                let generatedText = data.choices[0].message.content;
+
+                // Fix symbol formatting
+                generatedText = generatedText.replace(/\*([a-z_]+)/g, '#$1');  // *tag -> #tag
+                generatedText = generatedText.replace(/\*\*([a-z_]+)/g, '@$1'); // **tag -> @tag
+
+                // Update prompt editor
+                const editor = document.getElementById('promptEditor');
+
+                // Combine existing tags with new description
+                let finalPrompt = '';
+                if (appState.selectedStyles.length > 0) {
+                    finalPrompt += appState.selectedStyles.map(s => s.tag).join(', ') + ', ';
+                }
+                if (appState.selectedCharacters.length > 0) {
+                    finalPrompt += appState.selectedCharacters.map(c => c.tag).join(', ') + ', ';
+                }
+                finalPrompt += generatedText;
+
+                editor.value = finalPrompt.trim();
+
+            } catch (error) {
+                console.error('AI generation error:', error);
+                showToast('AI 生成失敗，請確認 LM Studio 是否運行', 'error', 4000);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        // ==================== Storyboard Functions ====================
+        function selectMode(button) {
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                if (btn.closest('.storyboard-step')) {
+                    btn.classList.remove('active');
+                }
+            });
+            button.classList.add('active');
+            appState.storyboardMode = button.dataset.mode;
+        }
+
+        function selectSeedMode(button) {
+            document.querySelectorAll('[data-seed]').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            appState.seedMode = button.dataset.seed;
+
+            const seedInput = document.getElementById('seedValue');
+            if (appState.seedMode === 'fixed') {
+                seedInput.disabled = false;
+                seedInput.value = Math.floor(Math.random() * 1000000);
+            } else {
+                seedInput.disabled = true;
+                seedInput.value = -1;
+            }
+        }
+
+        // Set image size to preset dimensions
+        function setImageSize(width, height) {
+            document.getElementById('imageWidth').value = width;
+            document.getElementById('imageHeight').value = height;
+            showToast(`已設定尺寸：${width}×${height}`, 'success');
+        }
+
+        // Swap width and height values
+        function swapImageSize() {
+            const widthInput = document.getElementById('imageWidth');
+            const heightInput = document.getElementById('imageHeight');
+            const tempWidth = widthInput.value;
+            widthInput.value = heightInput.value;
+            heightInput.value = tempWidth;
+            showToast(`已互換寬高：${widthInput.value}×${heightInput.value}`, 'success');
+        }
+
+        // Toggle Lightning LoRA settings
+        function toggleLightningLora() {
+            const isEnabled = document.getElementById('useLightningLora').checked;
+            const stepsInput = document.getElementById('imageSteps');
+
+            if (isEnabled) {
+                // Lightning LoRA recommended: 20 steps
+                if (stepsInput.value > 20) {
+                    stepsInput.value = 20;
+                }
+                showToast('已啟用 Lightning LoRA（CFG=1, Steps建議20）', 'success', 3000);
+            } else {
+                // Standard mode: restore to 25 steps if at 20
+                if (stepsInput.value == 20) {
+                    stepsInput.value = 25;
+                }
+                showToast('已切換回標準模式', 'info', 2000);
+            }
+        }
+
+        // ==================== New Storyboard Functions ====================
+        function importFromMainPrompt() {
+            const mainPrompt = document.getElementById('promptEditor').value;
+            const styleSubjectInput = document.getElementById('styleSubjectInput');
+
+            // Extract style tags (@...) and character tags (#...)
+            const styleTags = mainPrompt.match(/@\w+/g) || [];
+            const characterTags = mainPrompt.match(/#[\w()_]+/g) || [];
+
+            // Combine tags
+            const importedTags = [...styleTags, ...characterTags].join(', ');
+
+            if (importedTags) {
+                styleSubjectInput.value = importedTags;
+                showToast('已導入風格及角色標籤', 'success');
+            } else {
+                showToast('主提示詞中未找到風格或角色標籤', 'info');
+            }
+        }
+
+        async function generateFixedItems() {
+            const fixedInput = document.getElementById('fixedItemsInput').value.trim();
+            const storyDesc = document.getElementById('storyDescription').value.trim();
+
+            if (!fixedInput) {
+                showToast('請輸入固定項目', 'info');
+                return;
+            }
+
+            if (!storyDesc) {
+                showToast('請輸入劇情簡述', 'info');
+                return;
+            }
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ 生成中...';
+
+            try {
+                const systemPrompt = `Generate a single anime illustration prompt for fixed elements.
+
+Fixed items: ${fixedInput}
+Story: ${storyDesc}
+
+RULES:
+- Output ONLY the prompt text
+- NO labels, NO formatting, NO explanations
+- NO "PROMPT:", "Here is", "**", or any prefix
+- Write in natural language
+- Focus on consistent visual elements
+- Keep concise (under 150 words)
+
+Output the prompt directly:`;
+
+                const response = await fetch(appState.lmStudioUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: `prompt` }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 300
+                    })
+                });
+
+                const data = await response.json();
+                let result = data.choices[0].message.content.trim();
+
+                // Clean up common formatting issues
+                result = result.replace(/^(Here is|This is|The prompt is)[^\n]*:?\s*/i, '');
+                result = result.replace(/^\*\*[^\*]+\*\*\s*/g, '');
+                result = result.replace(/^PROMPT\s*:?\s*/i, '');
+                result = result.replace(/^\[.*?\]:?\s*/g, '');
+                result = result.trim();
+
+                document.getElementById('fixedItemsResult').value = result;
+                showToast('固定項目生成完成', 'success');
+            } catch (error) {
+                showToast('生成失敗: ' + error.message, 'error', 4000);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        // Custom fixed items - allow direct manual input
+        function customFixedItems() {
+            const resultTextarea = document.getElementById('fixedItemsResult');
+
+            // Clear the result area and focus on it
+            resultTextarea.value = '';
+            resultTextarea.style.background = 'var(--bg-panel)';
+            resultTextarea.placeholder = '請直接輸入固定項目的提示詞...';
+            resultTextarea.focus();
+
+            showToast('請在右側文字框中直接輸入固定項目提示詞', 'info', 3000);
+        }
+
+        async function generateVariableItems() {
+            const variableInput = document.getElementById('variableItemsInput').value.trim();
+            const storyDesc = document.getElementById('storyDescription').value.trim();
+            const frameCount = parseInt(document.getElementById('frameCount').value);
+
+            if (!variableInput) {
+                showToast('請輸入變動項目', 'info');
+                return;
+            }
+
+            if (!storyDesc) {
+                showToast('請輸入劇情簡述', 'info');
+                return;
+            }
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ 生成中...';
+
+            try {
+                const systemPrompt = `You are a prompt generator. Generate EXACTLY ${frameCount} prompts.
+
+CRITICAL RULES:
+- Output ONLY ${frameCount} numbered lines
+- NO explanations, NO introductions, NO conclusions
+- NO labels like "PROMPT:", "Here are", "**", or any formatting
+- NO extra text before or after the list
+- Start immediately with "1. " on the first line
+- Each line: number + period + space + prompt text
+- Stop after line ${frameCount}
+
+Variable elements: ${variableInput}
+Story: ${storyDesc}
+
+Example format (for 3 items):
+1. happy expression, waving hand
+2. surprised look, stepping back
+3. determined face, clenched fist
+
+Now generate ${frameCount} prompts:`;
+
+                const response = await fetch(appState.lmStudioUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: `${frameCount}` }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 600
+                    })
+                });
+
+                const data = await response.json();
+                let result = data.choices[0].message.content.trim();
+
+                // Remove common prefix patterns
+                result = result.replace(/^(Here are?|Below are?|I've generated|These are)[^\n]*\n/i, '');
+                result = result.replace(/^\*\*[^\*]+\*\*\s*/g, '');
+                result = result.replace(/^PROMPT[S]?\s*:?\s*/gim, '');
+                result = result.replace(/^\[PROMPT.*?\]:?\s*/gim, '');
+
+                // Parse the numbered list with stricter regex
+                const variations = [];
+                const lines = result.split('\n');
+
+                for (let line of lines) {
+                    line = line.trim();
+
+                    // Skip empty lines or explanatory text
+                    if (!line || line.startsWith('Note:') || line.startsWith('Example:') ||
+                        line.includes('Here are') || line.includes('These are')) {
+                        continue;
+                    }
+
+                    // Only match lines that start with number followed by dot and space
+                    const match = line.match(/^(\d+)\.\s+(.+)$/);
+                    if (match) {
+                        const itemNumber = parseInt(match[1]);
+                        let itemText = match[2].trim();
+
+                        // Remove common formatting markers
+                        itemText = itemText.replace(/^\*\*|\*\*$/g, '');  // Remove bold markers
+                        itemText = itemText.replace(/^\[|\]$/g, '');      // Remove brackets
+                        itemText = itemText.replace(/^PROMPT:?\s*/i, ''); // Remove PROMPT: prefix
+                        itemText = itemText.trim();
+
+                        // Filter out lines that are too long (likely explanatory text) or too short
+                        if (itemText.length > 5 && itemText.length < 300) {
+                            // Skip if it looks like instruction text
+                            if (!itemText.match(/^(generate|create|make|output|provide|the following)/i)) {
+                                variations.push(itemText);
+                            }
+                        }
+                    }
+
+                    // Stop if we've collected enough items
+                    if (variations.length >= frameCount) {
+                        break;
+                    }
+                }
+
+                // Ensure we have exactly frameCount items (or warn if less)
+                if (variations.length < frameCount) {
+                    showToast(`警告：僅生成 ${variations.length} 個項目（預期 ${frameCount} 個）`, 'warning', 4000);
+                } else if (variations.length > frameCount) {
+                    // Trim to exact count
+                    variations.length = frameCount;
+                }
+
+                // Store in appState
+                if (!appState.storyboardData) {
+                    appState.storyboardData = {};
+                }
+                appState.storyboardData.variableItems = variations;
+
+                // Display variations for editing
+                displayVariableItems(variations);
+                showToast('變動項目生成完成', 'success');
+            } catch (error) {
+                showToast('生成失敗: ' + error.message, 'error', 4000);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        function displayVariableItems(variations) {
+            const container = document.getElementById('variableItemsContainer');
+            container.innerHTML = '';
+
+            variations.forEach((variation, index) => {
+                const item = document.createElement('div');
+                item.style.cssText = 'margin-bottom: 12px; padding: 12px; background: var(--bg-darker); border-radius: 6px; cursor: pointer;';
+                item.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <strong>第 ${index + 1} 張</strong>
+                        <button class="btn" onclick="editVariableItem(${index})" style="padding: 4px 12px; font-size: 12px;">✏️ 編輯</button>
+                    </div>
+                    <div id="varItem_${index}" style="color: var(--text-secondary); font-size: 13px;">${variation}</div>
+                `;
+                container.appendChild(item);
+            });
+
+            updateStoryboardPreview();
+        }
+
+        function editVariableItem(index) {
+            const currentText = appState.storyboardData.variableItems[index];
+            const newText = prompt(`編輯第 ${index + 1} 張的變動項目：`, currentText);
+
+            if (newText !== null && newText.trim()) {
+                appState.storyboardData.variableItems[index] = newText.trim();
+                document.getElementById(`varItem_${index}`).textContent = newText.trim();
+                showToast('已更新第 ' + (index + 1) + ' 張', 'success');
+                updateStoryboardPreview();
+            }
+        }
+
+        // Create custom variable inputs for manual entry
+        function createCustomVariableInputs() {
+            const frameCount = parseInt(document.getElementById('frameCount').value);
+            const container = document.getElementById('variableItemsContainer');
+
+            if (frameCount < 2 || frameCount > 20) {
+                showToast('分鏡數量必須在 2-20 之間', 'info');
+                return;
+            }
+
+            // Initialize appState if needed
+            if (!appState.storyboardData) {
+                appState.storyboardData = {};
+            }
+            appState.storyboardData.variableItems = new Array(frameCount).fill('');
+
+            container.innerHTML = '';
+
+            // Create input boxes for each frame
+            for (let i = 0; i < frameCount; i++) {
+                const item = document.createElement('div');
+                item.style.cssText = 'margin-bottom: 8px;';
+                item.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="min-width: 60px; color: var(--text-primary); font-weight: bold;">第 ${i + 1} 張</label>
+                        <input
+                            type="text"
+                            id="customVarInput_${i}"
+                            class="config-input"
+                            placeholder="輸入第 ${i + 1} 張的變動項目..."
+                            style="flex: 1;"
+                            oninput="updateCustomVariableItem(${i})"
+                        >
+                    </div>
+                `;
+                container.appendChild(item);
+            }
+
+            // Add confirm button
+            const confirmBtn = document.createElement('button');
+            confirmBtn.className = 'btn';
+            confirmBtn.textContent = '✓ 確認自訂內容';
+            confirmBtn.style.cssText = 'width: 100%; margin-top: 8px;';
+            confirmBtn.onclick = confirmCustomVariableItems;
+            container.appendChild(confirmBtn);
+
+            showToast(`已創建 ${frameCount} 個輸入框`, 'success');
+        }
+
+        // Update custom variable item in real-time
+        function updateCustomVariableItem(index) {
+            const inputValue = document.getElementById(`customVarInput_${index}`).value.trim();
+            if (!appState.storyboardData) {
+                appState.storyboardData = {};
+            }
+            if (!appState.storyboardData.variableItems) {
+                appState.storyboardData.variableItems = [];
+            }
+            appState.storyboardData.variableItems[index] = inputValue;
+        }
+
+        // Confirm and display custom variable items
+        function confirmCustomVariableItems() {
+            if (!appState.storyboardData || !appState.storyboardData.variableItems) {
+                showToast('請先輸入變動項目', 'info');
+                return;
+            }
+
+            const variations = appState.storyboardData.variableItems.filter(item => item.trim() !== '');
+
+            if (variations.length === 0) {
+                showToast('請至少輸入一個變動項目', 'info');
+                return;
+            }
+
+            if (variations.length < appState.storyboardData.variableItems.length) {
+                const emptyCount = appState.storyboardData.variableItems.length - variations.length;
+                showToast(`警告：有 ${emptyCount} 個項目為空`, 'warning', 3000);
+            }
+
+            // Store and display
+            appState.storyboardData.variableItems = [...appState.storyboardData.variableItems];
+            displayVariableItems(appState.storyboardData.variableItems);
+            showToast('自訂內容已確認', 'success');
+        }
+
+        // Load template examples for variable items
+        function loadTemplateExample(templateNum) {
+            const frameCountInput = document.getElementById('frameCount');
+            const variableInput = document.getElementById('variableItemsInput');
+            const storyDescInput = document.getElementById('storyDescription');
+
+            let frameCount, variableText, storyText;
+
+            switch(templateNum) {
+                case 1: // 累加式（穿衣服）
+                    frameCount = 5;
+                    variableText = `請為「冬天出門穿衣」設計 5 個階段的服裝變化。
+要求：
+- 變化邏輯：每階段比前一階段多穿一件，後面的階段要包含前面所有衣物
+- 風格：日系休閒風
+- 輸出格式：只輸出衣物描述，用逗號分隔
+範例格式：
+階段1：白色高領毛衣
+階段2：白色高領毛衣, 牛仔外套
+...依此類推
+初始階段提示詞：白色高領毛衣`;
+                    storyText = '冬天早晨出門前的穿衣過程，從基本內衣到完整外出裝備，呈現漸進式的保暖層次。';
+                    break;
+
+                case 2: // 漸進式（情緒變化）
+                    frameCount = 4;
+                    variableText = `請設計 4 個階段的表情變化，從「平靜」漸進到「狂喜」。
+要求：
+- 每階段的情緒強度要有明顯差異
+- 描述要包含：眼睛、嘴巴、整體氛圍
+- 用 Stable Diffusion 能理解的英文關鍵詞
+輸出格式：
+階段1：[情緒名稱] - 關鍵詞
+階段2：[情緒名稱] - 關鍵詞
+...依此類推`;
+                    storyText = '角色從平靜狀態逐漸收到好消息，情緒從淡定、微笑、開心到極度興奮的轉變過程。';
+                    break;
+
+                case 3: // 時序式（光線）
+                    frameCount = 6;
+                    variableText = `請設計 6 個時間點的光線變化，從清晨到深夜。
+要求：
+- 包含：時間、光源方向、色調、陰影特徵
+- 適合室內窗邊場景
+- 用英文輸出
+時間點建議：清晨(5-6點)、早晨(8-9點)、中午(12-13點)、傍晚(17-18點)、黃昏(19-20點)、深夜(22-23點)`;
+                    storyText = '一天24小時中的6個代表性時刻，展現室內窗邊場景隨時間推移的自然光線變化，從日出到深夜。';
+                    break;
+
+                default:
+                    showToast('無效的範例編號', 'error');
+                    return;
+            }
+
+            // Apply template
+            frameCountInput.value = frameCount;
+            variableInput.value = variableText;
+            storyDescInput.value = storyText;
+
+            // Show success message
+            const templateNames = ['', '累加式（穿衣）', '漸進式（情緒）', '時序式（光線）'];
+            showToast(`已載入範例：${templateNames[templateNum]}`, 'success', 3000);
+        }
+
+        function updateStoryboardPreview() {
+            const styleSubject = document.getElementById('styleSubjectInput').value.trim();
+            const fixedItems = document.getElementById('fixedItemsResult').value.trim();
+            const previewDiv = document.getElementById('storyboardPreview');
+
+            if (!appState.storyboardData || !appState.storyboardData.variableItems || appState.storyboardData.variableItems.length === 0) {
+                previewDiv.innerHTML = '<span style="color: var(--text-secondary);">完成上述步驟後，將自動組合為：風格及主體 + 變動項目 + 固定項目 + 高畫質提示詞</span>';
+                return;
+            }
+
+            const qualityTags = 'masterpiece, best quality, ultra-detailed, 8k, high resolution, sharp focus';
+            let previewHTML = '';
+            appState.storyboardData.variableItems.forEach((varItem, index) => {
+                const fullPrompt = [styleSubject, varItem, fixedItems, qualityTags].filter(p => p).join(', ');
+                previewHTML += `
+                    <div style="margin-bottom: 8px; padding: 8px; background: var(--bg-panel); border-radius: 4px;">
+                        <strong>第 ${index + 1} 張：</strong>
+                        <div style="margin-top: 4px; font-size: 12px; color: var(--text-primary);">${fullPrompt}</div>
+                    </div>
+                `;
+            });
+
+            previewDiv.innerHTML = previewHTML;
+        }
+
+        async function batchRenderNew() {
+            if (!appState.storyboardData || !appState.storyboardData.variableItems || appState.storyboardData.variableItems.length === 0) {
+                showToast('請先生成變動項目', 'info');
+                return;
+            }
+
+            const styleSubject = document.getElementById('styleSubjectInput').value.trim();
+            const fixedItems = document.getElementById('fixedItemsResult').value.trim();
+
+            if (!fixedItems) {
+                showToast('請先生成固定項目', 'info');
+                return;
+            }
+
+            const frameCount = appState.storyboardData.variableItems.length;
+
+            if (!confirm(`確定要生成 ${frameCount} 張圖片嗎？`)) {
+                return;
+            }
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ 批次生成中...';
+
+            try {
+                let currentSeed = appState.seedMode === 'fixed' ?
+                    parseInt(document.getElementById('seedValue').value) : -1;
+
+                // For first-random mode, generate the seed for first frame
+                if (appState.seedMode === 'first-random') {
+                    currentSeed = Math.floor(Math.random() * 1000000000);
+                }
+
+                // Send each frame sequentially with progress indicator
+                for (let i = 0; i < frameCount; i++) {
+                    // Update button text to show progress
+                    btn.textContent = `⏳ 發送中 ${i + 1}/${frameCount}...`;
+
+                    const variableItem = appState.storyboardData.variableItems[i];
+
+                    // Combine: style+subject + variable + fixed + quality tags
+                    const qualityTags = 'masterpiece, best quality, ultra-detailed, 8k, high resolution, sharp focus';
+                    const fullPrompt = [styleSubject, variableItem, fixedItems, qualityTags]
+                        .filter(p => p)
+                        .join(', ');
+
+                    // Determine seed for this frame
+                    let frameSeed;
+                    if (appState.seedMode === 'all-random') {
+                        frameSeed = -1;  // Each frame gets random seed
+                    } else if (appState.seedMode === 'first-random') {
+                        frameSeed = currentSeed;  // All frames use the same seed (generated above)
+                    } else {
+                        frameSeed = currentSeed;  // Fixed mode: all frames use specified seed
+                    }
+
+                    // Send to ComfyUI and wait for completion
+                    await submitToComfyUI(fullPrompt, frameSeed, `Storyboard ${i + 1}/${frameCount}`);
+
+                    // Wait 1.5 seconds before sending next frame to maintain order
+                    if (i < frameCount - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                    }
+                }
+
+                showToast(`已依序發送 ${frameCount} 張圖片至 ComfyUI`, 'success');
+            } catch (error) {
+                showToast('批次生圖失敗: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        async function generateStoryboard() {
+            const storyInput = document.getElementById('storyInput').value.trim();
+            const frameCount = parseInt(document.getElementById('frameCount').value);
+
+            if (!storyInput) {
+                showToast('請輸入劇本描述', 'info');
+                return;
+            }
+
+            // Find the storyboard generate button
+            const btn = document.querySelector('#storyboardTab .generate-btn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ 生成中...';
+
+            try {
+                let systemPrompt = `You are generating prompts for a ${frameCount}-frame storyboard using NetaYume Lumina model.
+
+Mode: ${appState.storyboardMode}
+
+`;
+
+                if (appState.storyboardMode === 'stacking') {
+                    systemPrompt += `STACKING MODE RULES:
+1. Frame 1: Full detailed prompt based on user input
+2. Frames 2-${frameCount}: ONLY describe what CHANGES or is ADDED
+3. DO NOT repeat unchanged elements
+4. If clothing covers something, REMOVE the covered item from description
+5. Focus on cumulative additions
+
+Example:
+Frame 1: 1girl, long hair, underwear, standing, bedroom
+Frame 2: + white shirt (removes 'underwear' since it's covered)
+Frame 3: + blue jeans
+Frame 4: + jacket, outdoor, street`;
+
+                } else if (appState.storyboardMode === 'event') {
+                    systemPrompt += `EVENT MODE RULES:
+1. Keep character appearance consistent
+2. Change actions, poses, or scenes
+3. Each frame is independent but features same character
+4. Maintain style and quality tags`;
+
+                } else {
+                    systemPrompt += `STORY MODE RULES:
+1. Create narrative progression with cause and effect
+2. Can change characters, scenes, emotions
+3. Tell a coherent story across frames`;
+                }
+
+                systemPrompt += `\n\nOutput format (one line per frame):
+Frame N: [prompt here]
+
+Use # for characters, @ for artists. Keep prompts concise.`;
+
+                const response = await fetch(appState.lmStudioUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: "local-model",
+                        messages: [
+                            { role: "system", content: systemPrompt },
+                            { role: "user", content: `Generate ${frameCount} frames: ${storyInput}` }
+                        ],
+                        temperature: 0.8,
+                        max_tokens: 1000
+                    })
+                });
+
+                if (!response.ok) throw new Error('LM Studio 連線失敗');
+
+                const data = await response.json();
+                const generatedText = data.choices[0].message.content;
+
+                // Parse frames
+                const frameLines = generatedText.split('\n').filter(line => line.trim().startsWith('Frame'));
+                appState.storyboardFrames = frameLines.map((line, index) => {
+                    const promptMatch = line.match(/Frame \d+:\s*(.+)/);
+                    return {
+                        number: index + 1,
+                        prompt: promptMatch ? promptMatch[1].trim() : line
+                    };
+                });
+
+                renderStoryboardFrames();
+
+            } catch (error) {
+                console.error('Storyboard generation error:', error);
+                showToast('分鏡生成失敗: ' + error.message, 'error', 4000);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        function renderStoryboardFrames() {
+            const container = document.getElementById('storyboardFrames');
+            container.innerHTML = '';
+
+            if (appState.storyboardFrames.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary);">分鏡提示詞將在此顯示</p>';
+                return;
+            }
+
+            appState.storyboardFrames.forEach(frame => {
+                const item = document.createElement('div');
+                item.className = 'frame-item';
+                item.innerHTML = `
+                    <div class="frame-number">第 ${frame.number} 張</div>
+                    <div class="frame-prompt">${frame.prompt}</div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        async function batchRender() {
+            if (appState.storyboardFrames.length === 0) {
+                showToast('請先生成分鏡提示詞', 'info');
+                return;
+            }
+
+            if (!confirm(`確定要生成 ${appState.storyboardFrames.length} 張圖片嗎？`)) {
+                return;
+            }
+
+            // Find the batch render button
+            const btn = document.querySelector('#storyboardTab .render-btn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ 批次生成中...';
+
+            try {
+                let currentSeed = appState.seedMode === 'fixed' ?
+                    parseInt(document.getElementById('seedValue').value) : -1;
+
+                for (let i = 0; i < appState.storyboardFrames.length; i++) {
+                    const frame = appState.storyboardFrames[i];
+
+                    // Determine seed for this frame
+                    let frameSeed;
+                    if (appState.seedMode === 'all-random') {
+                        frameSeed = -1;
+                    } else if (appState.seedMode === 'first-random') {
+                        if (i === 0) {
+                            frameSeed = -1; // First frame random
+                        } else if (currentSeed === -1) {
+                            // Use seed from first frame result (in real implementation)
+                            frameSeed = Math.floor(Math.random() * 1000000);
+                            currentSeed = frameSeed;
+                        } else {
+                            frameSeed = currentSeed;
+                        }
+                    } else {
+                        frameSeed = currentSeed;
+                    }
+
+                    // Build full prompt for stacking mode
+                    let fullPrompt = frame.prompt;
+                    if (appState.storyboardMode === 'stacking' && i > 0) {
+                        // In stacking mode, combine all previous frames
+                        fullPrompt = appState.storyboardFrames
+                            .slice(0, i + 1)
+                            .map(f => f.prompt)
+                            .join(', ');
+                    }
+
+                    await submitToComfyUI(fullPrompt, frameSeed, `Storyboard ${i + 1}`);
+
+                    // Small delay between requests
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+
+                showToast('批次發送完成', 'success');
+                switchTab('history');
+
+            } catch (error) {
+                console.error('Batch render error:', error);
+                showToast('批次生成失敗: ' + error.message, 'error', 4000);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        // ==================== ComfyUI Integration ====================
+        async function testConnection() {
+            const url = document.getElementById('comfyUrl').value;
+            const indicator = document.getElementById('connectionStatus');
+
+            try {
+                const response = await fetch(`${url}/system_stats`, { method: 'GET' });
+                if (response.ok) {
+                    indicator.className = 'status-indicator online';
+                    indicator.title = 'ComfyUI 線上';
+                } else {
+                    throw new Error('連線失敗');
+                }
+            } catch (error) {
+                indicator.className = 'status-indicator offline';
+                indicator.title = 'ComfyUI 離線';
+            }
+        }
+
+        async function renderImage() {
+            const prompt = document.getElementById('promptEditor').value.trim();
+
+            if (!prompt) {
+                showToast('請輸入提示詞', 'info');
+                return;
+            }
+
+            // Find the render button in left panel
+            const btn = document.querySelector('.left-panel .render-btn');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ 生成中...';
+
+            try {
+                await submitToComfyUI(prompt, -1, 'Single Image');
+                showToast('已發送至 ComfyUI 佇列', 'success');
+            } catch (error) {
+                console.error('Render error:', error);
+                showToast('生圖失敗: ' + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        async function submitToComfyUI(prompt, seed, label) {
+            const url = document.getElementById('comfyUrl').value;
+            const width = parseInt(document.getElementById('imageWidth').value);
+            const height = parseInt(document.getElementById('imageHeight').value);
+            const steps = parseInt(document.getElementById('imageSteps').value);
+            const checkpoint = document.getElementById('checkpointModel').value;
+            const useLightning = document.getElementById('useLightningLora').checked;
+
+            // Use random seed if seed is -1
+            const actualSeed = seed === -1 ? Math.floor(Math.random() * 1000000000) : seed;
+
+            // Create history entry
+            const historyItem = {
+                id: Date.now(),
+                prompt: prompt,
+                status: 'queue',
+                timestamp: new Date().toLocaleString('zh-TW'),
+                label: label,
+                width: width,
+                height: height,
+                seed: actualSeed,
+                imageUrl: null
+            };
+
+            appState.history.unshift(historyItem);
+            saveHistory();
+            renderHistory();
+
+            // Build ComfyUI workflow for NetaYume Lumina
+            const workflow = {
+                prompt: {
+                    "6": {
+                        "inputs": {
+                            "seed": actualSeed,
+                            "steps": steps,
+                            "cfg": useLightning ? 1 : 4.5,
+                            "sampler_name": "euler",
+                            "scheduler": useLightning ? "normal" : "simple",
+                            "denoise": 1,
+                            "model": useLightning ? ["45", 0] : ["41", 0],
+                            "positive": ["39", 0],
+                            "negative": ["42", 0],
+                            "latent_image": ["13", 0]
+                        },
+                        "class_type": "KSampler"
+                    },
+                    "9": {
+                        "inputs": {
+                            "filename_prefix": "NetaYume",
+                            "images": ["43", 0]
+                        },
+                        "class_type": "SaveImage"
+                    },
+                    "13": {
+                        "inputs": {
+                            "width": width,
+                            "height": height,
+                            "batch_size": 1
+                        },
+                        "class_type": "EmptySD3LatentImage"
+                    },
+                    "37": {
+                        "inputs": {
+                            "value": prompt
+                        },
+                        "class_type": "PrimitiveStringMultiline"
+                    },
+                    "38": {
+                        "inputs": {
+                            "string_a": "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start>",
+                            "string_b": ["37", 0],
+                            "delimiter": " "
+                        },
+                        "class_type": "StringConcatenate"
+                    },
+                    "39": {
+                        "inputs": {
+                            "text": ["38", 0],
+                            "clip": useLightning ? ["44", 1] : ["41", 1]
+                        },
+                        "class_type": "CLIPTextEncode"
+                    },
+                    "41": {
+                        "inputs": {
+                            "ckpt_name": checkpoint
+                        },
+                        "class_type": "CheckpointLoaderSimple"
+                    },
+                    "42": {
+                        "inputs": {
+                            "text": "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> blurry, worst quality, low quality, deformed hands, bad anatomy, extra limbs, poorly drawn face, mutated, extra eyes, bad proportions",
+                            "clip": useLightning ? ["44", 1] : ["41", 1]
+                        },
+                        "class_type": "CLIPTextEncode"
+                    },
+                    "43": {
+                        "inputs": {
+                            "samples": ["6", 0],
+                            "vae": ["41", 2]
+                        },
+                        "class_type": "VAEDecode"
+                    }
+                }
+            };
+
+            // Add Lightning LoRA nodes if enabled
+            if (useLightning) {
+                workflow.prompt["44"] = {
+                    "inputs": {
+                        "lora_name": "netayume_v3.5_lightning_v1.0.safetensors",
+                        "strength_model": 1.0,
+                        "strength_clip": 1.0,
+                        "model": ["41", 0],
+                        "clip": ["41", 1]
+                    },
+                    "class_type": "LoraLoader"
+                };
+
+                workflow.prompt["45"] = {
+                    "inputs": {
+                        "shift": 3.0,
+                        "model": ["44", 0]
+                    },
+                    "class_type": "ModelSamplingAuraFlow"
+                };
+            }
+
+            // Submit to ComfyUI
+            try {
+                const response = await fetch(`${url}/prompt`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(workflow)
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`ComfyUI 提交失敗: ${response.status} ${errorText}`);
+                }
+
+                const data = await response.json();
+                historyItem.promptId = data.prompt_id;
+
+                // Start polling for result
+                pollComfyUIResult(historyItem.id, data.prompt_id);
+
+            } catch (error) {
+                console.error('Submit to ComfyUI error:', error);
+                historyItem.status = 'failed';
+                historyItem.error = error.message;
+                saveHistory();
+                renderHistory();
+                throw error;
+            }
+        }
+
+        async function pollComfyUIResult(historyId, promptId) {
+            const url = document.getElementById('comfyUrl').value;
+            const maxAttempts = 100;
+            let attempts = 0;
+
+            const poll = setInterval(async () => {
+                attempts++;
+
+                if (attempts > maxAttempts) {
+                    clearInterval(poll);
+                    updateHistoryStatus(historyId, 'failed');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`${url}/history/${promptId}`);
+                    if (!response.ok) return;
+
+                    const data = await response.json();
+
+                    if (data[promptId] && data[promptId].outputs) {
+                        clearInterval(poll);
+
+                        // Get image URL
+                        const outputs = data[promptId].outputs;
+                        const saveImageNode = Object.values(outputs).find(node => node.images);
+
+                        if (saveImageNode && saveImageNode.images.length > 0) {
+                            const image = saveImageNode.images[0];
+                            const imageUrl = `${url}/view?filename=${image.filename}&subfolder=${image.subfolder || ''}&type=${image.type}`;
+
+                            updateHistoryStatus(historyId, 'success', imageUrl);
+                        }
+                    }
+
+                } catch (error) {
+                    console.error('Polling error:', error);
+                }
+
+            }, 3000); // Poll every 3 seconds
+        }
+
+        function updateHistoryStatus(historyId, status, imageUrl = null) {
+            const item = appState.history.find(h => h.id === historyId);
+            if (item) {
+                item.status = status;
+                if (imageUrl) item.imageUrl = imageUrl;
+                saveHistory();
+                renderHistory();
+            }
+        }
+
+        // ==================== History Functions ====================
+        function saveHistory() {
+            localStorage.setItem('starHistory', JSON.stringify(appState.history));
+        }
+
+        function loadHistory() {
+            const saved = localStorage.getItem('starHistory');
+            if (saved) {
+                appState.history = JSON.parse(saved);
+                renderHistory();
+            }
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('historyGrid');
+            container.innerHTML = '';
+
+            if (appState.history.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary);">尚無歷史紀錄</p>';
+                return;
+            }
+
+            appState.history.forEach((item, index) => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+
+                const statusClass = item.status === 'success' ? 'status-success' :
+                                  item.status === 'failed' ? 'status-failed' : 'status-queue';
+                const statusText = item.status === 'success' ? '完成' :
+                                 item.status === 'failed' ? '失敗' : '佇列中';
+
+                const errorInfo = item.status === 'failed' && item.error ?
+                    `<div style="padding: 8px; font-size: 11px; color: var(--accent-red);">${item.error}</div>` : '';
+
+                historyItem.innerHTML = `
+                    <div class="history-image" onclick="openLightbox(${index})">
+                        ${item.imageUrl ? `<img src="${item.imageUrl}" alt="Generated">` : '⏳'}
+                        <div class="history-status ${statusClass}">${statusText}</div>
+                    </div>
+                    ${errorInfo}
+                    <div class="history-actions">
+                        ${item.imageUrl ? `<button class="action-btn" onclick="upscaleImage(${index})">🔍 放大</button>` : ''}
+                        <button class="action-btn" onclick="deleteHistory(${index})">🗑️ 刪除</button>
+                    </div>
+                `;
+
+                container.appendChild(historyItem);
+            });
+        }
+
+        function deleteHistory(index) {
+            if (!confirm('確定要刪除此紀錄嗎？')) return;
+
+            appState.history.splice(index, 1);
+            saveHistory();
+            renderHistory();
+        }
+
+        async function upscaleImage(index) {
+            const item = appState.history[index];
+            if (!item.imageUrl) {
+                showToast('圖片尚未生成', 'error');
+                return;
+            }
+
+            if (!confirm('確定要放大此圖片嗎？')) return;
+
+            const url = document.getElementById('comfyUrl').value;
+            const upscaleModel = document.getElementById('upscaleModel').value;
+
+            try {
+                // Step 1: Download the image
+                const imageResponse = await fetch(item.imageUrl);
+                const imageBlob = await imageResponse.blob();
+
+                // Step 2: Upload to ComfyUI input folder
+                const formData = new FormData();
+                const filename = `upscale_${Date.now()}.png`;
+                formData.append('image', imageBlob, filename);
+                formData.append('overwrite', 'true');
+
+                const uploadResponse = await fetch(`${url}/upload/image`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!uploadResponse.ok) {
+                    throw new Error('圖片上傳失敗');
+                }
+
+                const uploadData = await uploadResponse.json();
+                const uploadedFilename = uploadData.name || filename;
+
+                // Step 3: Submit upscale workflow
+                const workflow = {
+                    prompt: {
+                        "60": {
+                            "inputs": {
+                                "image": uploadedFilename,
+                                "upload": "image"
+                            },
+                            "class_type": "LoadImage"
+                        },
+                        "50": {
+                            "inputs": {
+                                "model_name": upscaleModel
+                            },
+                            "class_type": "UpscaleModelLoader"
+                        },
+                        "51": {
+                            "inputs": {
+                                "upscale_model": ["50", 0],
+                                "image": ["60", 0]
+                            },
+                            "class_type": "ImageUpscaleWithModel"
+                        },
+                        "9": {
+                            "inputs": {
+                                "filename_prefix": "NetaYume_HD",
+                                "images": ["51", 0]
+                            },
+                            "class_type": "SaveImage"
+                        }
+                    }
+                };
+
+                const response = await fetch(`${url}/prompt`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(workflow)
+                });
+
+                if (!response.ok) {
+                    throw new Error('放大工作流提交失敗');
+                }
+
+                const data = await response.json();
+
+                // Create new history entry for upscaled image
+                const historyItem = {
+                    id: Date.now(),
+                    prompt: item.prompt + ' [Upscaled]',
+                    status: 'queue',
+                    timestamp: new Date().toLocaleString('zh-TW'),
+                    label: item.label + ' (放大)',
+                    width: item.width * 4,
+                    height: item.height * 4,
+                    seed: item.seed,
+                    imageUrl: null,
+                    promptId: data.prompt_id
+                };
+
+                appState.history.unshift(historyItem);
+                saveHistory();
+                renderHistory();
+
+                // Start polling for result
+                pollComfyUIResult(historyItem.id, data.prompt_id);
+
+                showToast('已發送放大任務至 ComfyUI', 'success');
+
+            } catch (error) {
+                console.error('Upscale error:', error);
+                showToast('放大失敗: ' + error.message, 'error');
+            }
+        }
+
+        // ==================== Lightbox Functions ====================
+        function openLightbox(index) {
+            const item = appState.history[index];
+            if (!item.imageUrl) return;
+
+            appState.lightboxIndex = index;
+            const lightbox = document.getElementById('lightbox');
+            const image = document.getElementById('lightboxImage');
+
+            image.src = item.imageUrl;
+            lightbox.classList.add('active');
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('active');
+        }
+
+        function navigateLightbox(direction) {
+            let newIndex = appState.lightboxIndex + direction;
+
+            // Find next valid image
+            while (newIndex >= 0 && newIndex < appState.history.length) {
+                if (appState.history[newIndex].imageUrl) {
+                    openLightbox(newIndex);
+                    return;
+                }
+                newIndex += direction;
+            }
+        }
+
+        // Close lightbox on Escape key and arrow keys (only when lightbox is active)
+        document.addEventListener('keydown', (e) => {
+            const lightbox = document.getElementById('lightbox');
+            const isLightboxActive = lightbox && lightbox.classList.contains('active');
+
+            if (isLightboxActive) {
+                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'ArrowLeft') navigateLightbox(-1);
+                if (e.key === 'ArrowRight') navigateLightbox(1);
+            }
         });
-        loadExampleBtn.addEventListener('click', loadRandomExample);
-        applySettingsBtn.addEventListener('click', applySettings);
-        exportPngBtn.addEventListener('click', exportPNG);
-        exportSvgBtn.addEventListener('click', exportSVG);
-        exportMmdBtn.addEventListener('click', exportMMD);
-        checkSyntaxBtn.addEventListener('click', checkSyntax);
-        
-        // 初始化
-        setupTabs();
-        setupExampleButtons();
-        setupSizeControls();
-        
-        // 等待一下確保頁面和腳本完全載入
-        setTimeout(function() {
-            initializeMermaid();
-            loadRandomExample();
-        }, 500);
-    };
+
+        // Close lightbox when clicking on background
+        document.getElementById('lightbox').addEventListener('click', (e) => {
+            if (e.target.id === 'lightbox') {
+                closeLightbox();
+            }
+        });
+
+        // Navigate with mouse wheel in lightbox
+        document.getElementById('lightbox').addEventListener('wheel', (e) => {
+            if (document.getElementById('lightbox').classList.contains('active')) {
+                e.preventDefault();
+                if (e.deltaY > 0) {
+                    // Scroll down - next image
+                    navigateLightbox(1);
+                } else if (e.deltaY < 0) {
+                    // Scroll up - previous image
+                    navigateLightbox(-1);
+                }
+            }
+        }, { passive: false });
+
+        // ==================== Tab Functions ====================
+        function switchTab(tabName, clickedElement) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+
+            // Find the clicked tab element
+            if (clickedElement) {
+                clickedElement.classList.add('active');
+            } else {
+                // Fallback: find by onclick attribute
+                const tabs = document.querySelectorAll('.tab');
+                tabs.forEach(tab => {
+                    const onclickAttr = tab.getAttribute('onclick');
+                    if (onclickAttr && onclickAttr.includes(`'${tabName}'`)) {
+                        tab.classList.add('active');
+                    }
+                });
+            }
+
+            // Update tab contents
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+
+        // ==================== File Upload ====================
+        document.getElementById('csvUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                const lines = content.split('\n');
+
+                appState.customArtists = [];
+                let skippedLines = 0;
+
+                lines.forEach((line, index) => {
+                    line = line.trim();
+
+                    // Skip empty lines
+                    if (!line) return;
+
+                    // Skip header line if it contains "Artist Tag" or similar
+                    if (index === 0 && (line.toLowerCase().includes('artist') || line.toLowerCase().includes('tag'))) {
+                        return;
+                    }
+
+                    // Check if line contains comma (two-column format: name, @tag)
+                    if (line.includes(',')) {
+                        const parts = line.split(',').map(s => s.trim());
+                        const name = parts[0];
+                        let tag = parts[1];
+
+                        // Ensure tag starts with @
+                        if (tag && !tag.startsWith('@')) {
+                            tag = '@' + tag;
+                        }
+
+                        if (name && tag) {
+                            appState.customArtists.push({ name, tag, nameEn: name });
+                        } else {
+                            skippedLines++;
+                        }
+                    } else {
+                        // Single column format: just the artist name/tag
+                        let name = line;
+                        let tag = line;
+
+                        // Remove @ if exists, we'll add it back
+                        tag = tag.replace(/^@/, '');
+
+                        // Convert spaces to underscores and lowercase
+                        tag = tag.replace(/\s+/g, '_').toLowerCase();
+
+                        // Add @ prefix
+                        tag = '@' + tag;
+
+                        appState.customArtists.push({ name, tag, nameEn: name });
+                    }
+                });
+
+                // Initialize with random 8
+                randomCustomStyles();
+
+                let message = `成功載入 ${appState.customArtists.length} 個自訂風格`;
+                if (skippedLines > 0) {
+                    message += ` (跳過 ${skippedLines} 行)`;
+                }
+                showToast(message, 'success');
+            };
+            reader.readAsText(file, 'UTF-8');
+        });
+
+        // State for custom styles display
+        appState.displayedCustomArtists = [];
+        appState.allCustomArtistsForDisplay = [];
+
+        function renderCustomStyles(artistsToDisplay = null) {
+            const container = document.getElementById('customStyles');
+            container.innerHTML = '';
+
+            if (appState.customArtists.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary);">請上傳 Artist Tag CSV 檔案以載入自訂風格</p>';
+                return;
+            }
+
+            const artists = artistsToDisplay || appState.displayedCustomArtists;
+
+            if (artists.length === 0) {
+                container.innerHTML = '<p style="color: var(--text-secondary);">沒有符合的風格</p>';
+                return;
+            }
+
+            artists.forEach(artist => {
+                const card = document.createElement('div');
+                card.className = 'style-card';
+                card.onclick = () => toggleStyle(artist);
+
+                // Check if there's a preview image (vertical layout)
+                let imageHtml = '';
+                if (artist.imageUrl) {
+                    imageHtml = `<div class="style-card-image"><img src="${artist.imageUrl}" alt="${artist.name}"></div>`;
+                }
+
+                card.innerHTML = `
+                    ${imageHtml}
+                    <div class="style-card-name">${artist.name}</div>
+                    <div class="style-card-tag">${artist.tag}</div>
+                `;
+
+                if (appState.selectedStyles.find(s => s.tag === artist.tag)) {
+                    card.classList.add('selected');
+                }
+
+                container.appendChild(card);
+            });
+        }
+
+        function randomCustomStyles() {
+            if (appState.customArtists.length === 0) {
+                showToast('請先上傳 Artist Tag CSV 檔案', 'error');
+                return;
+            }
+
+            // Shuffle and take first 8
+            const shuffled = [...appState.customArtists].sort(() => Math.random() - 0.5);
+            appState.displayedCustomArtists = shuffled.slice(0, 8);
+            renderCustomStyles();
+            showToast('已隨機選擇 8 組風格', 'success');
+        }
+
+        function filterCustomStyles() {
+            const searchTerm = document.getElementById('styleSearch').value.toLowerCase().trim();
+
+            if (!searchTerm) {
+                // If no search term, show random 8 or all if less than 8
+                if (appState.displayedCustomArtists.length === 0) {
+                    randomCustomStyles();
+                } else {
+                    renderCustomStyles();
+                }
+                return;
+            }
+
+            // Filter artists by search term
+            const filtered = appState.customArtists.filter(artist =>
+                artist.name.toLowerCase().includes(searchTerm) ||
+                artist.tag.toLowerCase().includes(searchTerm)
+            );
+
+            renderCustomStyles(filtered);
+
+            if (filtered.length === 0) {
+                showToast('未找到符合的風格', 'info');
+            }
+        }
+
+        // ZIP File Upload Handler
+        document.getElementById('zipUpload').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (!file.name.toLowerCase().endsWith('.zip')) {
+                showToast('請選擇 ZIP 檔案', 'error');
+                return;
+            }
+
+            try {
+                // Check if JSZip is loaded
+                if (typeof JSZip === 'undefined') {
+                    showToast('JSZip 庫未載入，請重新整理頁面後再試', 'error');
+                    return;
+                }
+
+                const zip = new JSZip();
+                const zipContent = await zip.loadAsync(file);
+
+                let loadedImages = 0;
+                const promises = [];
+
+                // Process each file in the ZIP
+                zipContent.forEach((relativePath, zipEntry) => {
+                    // Skip directories and non-image files
+                    if (zipEntry.dir) return;
+
+                    const filename = relativePath.split('/').pop().toLowerCase();
+
+                    // Check if it's an image file
+                    if (!filename.match(/\.(jpg|jpeg|png|webp|gif)$/i)) return;
+
+                    // Extract artist name from filename (remove extension)
+                    const artistName = filename.replace(/\.(jpg|jpeg|png|webp|gif)$/i, '');
+
+                    // Find matching artist in customArtists
+                    const promise = zipEntry.async('blob').then(blob => {
+                        const imageUrl = URL.createObjectURL(blob);
+
+                        // Try to match with existing artists
+                        let matched = false;
+
+                        appState.customArtists.forEach(artist => {
+                            // Try exact match
+                            const artistTagClean = artist.tag.replace('@', '').toLowerCase();
+                            const artistNameClean = artist.name.toLowerCase().replace(/\s+/g, '_');
+                            const filenameClean = artistName.toLowerCase();
+
+                            if (filenameClean === artistTagClean ||
+                                filenameClean === artistNameClean ||
+                                artistTagClean.includes(filenameClean) ||
+                                filenameClean.includes(artistTagClean)) {
+
+                                artist.imageUrl = imageUrl;
+                                matched = true;
+                                loadedImages++;
+                            }
+                        });
+
+                        // If no match found, try fuzzy matching
+                        if (!matched) {
+                            appState.customArtists.forEach(artist => {
+                                const similarity = calculateSimilarity(
+                                    artistName.toLowerCase(),
+                                    artist.name.toLowerCase().replace(/\s+/g, '_')
+                                );
+
+                                if (similarity > 0.7) {
+                                    artist.imageUrl = imageUrl;
+                                    loadedImages++;
+                                }
+                            });
+                        }
+                    });
+
+                    promises.push(promise);
+                });
+
+                await Promise.all(promises);
+
+                // Re-render current display
+                if (appState.displayedCustomArtists.length > 0) {
+                    renderCustomStyles();
+                } else {
+                    randomCustomStyles();
+                }
+
+                showToast(`成功載入 ${loadedImages} 張畫師預覽圖`, 'success');
+
+            } catch (error) {
+                console.error('ZIP loading error:', error);
+                showToast('ZIP 檔案載入失敗: ' + error.message, 'error');
+            }
+        });
+
+        // Simple string similarity calculation (Levenshtein-based)
+        function calculateSimilarity(str1, str2) {
+            const longer = str1.length > str2.length ? str1 : str2;
+            const shorter = str1.length > str2.length ? str2 : str1;
+
+            if (longer.length === 0) return 1.0;
+
+            const editDistance = getEditDistance(longer, shorter);
+            return (longer.length - editDistance) / longer.length;
+        }
+
+        function getEditDistance(str1, str2) {
+            const matrix = [];
+
+            for (let i = 0; i <= str2.length; i++) {
+                matrix[i] = [i];
+            }
+
+            for (let j = 0; j <= str1.length; j++) {
+                matrix[0][j] = j;
+            }
+
+            for (let i = 1; i <= str2.length; i++) {
+                for (let j = 1; j <= str1.length; j++) {
+                    if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            matrix[i][j - 1] + 1,
+                            matrix[i - 1][j] + 1
+                        );
+                    }
+                }
+            }
+
+            return matrix[str2.length][str1.length];
+        }
     </script>
 </body>
 </html>
