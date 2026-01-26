@@ -2742,6 +2742,14 @@ Use # for characters, @ for artists. Keep prompts concise.`;
             const useLightning = document.getElementById('useLightningLora').checked;
             const useNSFW = document.getElementById('useNSFW').checked;
 
+            // Generate timestamp for filename (MMDD_HHMM)
+            const now = new Date();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hour = String(now.getHours()).padStart(2, '0');
+            const minute = String(now.getMinutes()).padStart(2, '0');
+            const timestamp = `${month}${day}_${hour}${minute}`;
+
             // Add NSFW tag if enabled
             if (useNSFW) {
                 prompt = 'nsfw, ' + prompt;
@@ -2787,7 +2795,7 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                     },
                     "9": {
                         "inputs": {
-                            "filename_prefix": "NetaYume",
+                            "filename_prefix": `NetaYume_${timestamp}`,
                             "images": ["43", 0]
                         },
                         "class_type": "SaveImage"
