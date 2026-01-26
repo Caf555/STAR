@@ -957,6 +957,16 @@
                     </p>
                 </div>
 
+                <div style="margin: 12px 0; padding: 10px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 6px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="useNSFW">
+                        <span style="color: var(--text-primary); font-weight: bold;">🔞 NSFW</span>
+                    </label>
+                    <p style="color: var(--text-secondary); font-size: 11px; margin: 6px 0 0 24px; line-height: 1.4;">
+                        啟用後將在提示詞中自動加入 nsfw 標籤
+                    </p>
+                </div>
+
                 <button class="render-btn" onclick="renderImage()">
                     ⚡ 極速生圖
                 </button>
@@ -2733,6 +2743,12 @@ Use # for characters, @ for artists. Keep prompts concise.`;
             const steps = parseInt(document.getElementById('imageSteps').value);
             const checkpoint = document.getElementById('checkpointModel').value;
             const useLightning = document.getElementById('useLightningLora').checked;
+            const useNSFW = document.getElementById('useNSFW').checked;
+
+            // Add NSFW tag if enabled
+            if (useNSFW) {
+                prompt = 'nsfw, ' + prompt;
+            }
 
             // Use random seed if seed is -1
             const actualSeed = seed === -1 ? Math.floor(Math.random() * 1000000000) : seed;
