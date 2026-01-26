@@ -947,6 +947,16 @@
                     >
                 </div>
 
+                <div style="margin: 12px 0; padding: 10px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 6px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="useLightningLora" onchange="toggleLightningLora()">
+                        <span style="color: var(--text-primary); font-weight: bold;">⚡ Lightning LoRA (2倍速)</span>
+                    </label>
+                    <p style="color: var(--text-secondary); font-size: 11px; margin: 6px 0 0 24px; line-height: 1.4;">
+                        啟用後：CFG=1, Steps建議20, 禁用negative prompt, 手部細節更佳
+                    </p>
+                </div>
+
                 <button class="render-btn" onclick="renderImage()">
                     ⚡ 極速生圖
                 </button>
@@ -1955,6 +1965,26 @@ Example output:
             showToast(`已互換寬高：${widthInput.value}×${heightInput.value}`, 'success');
         }
 
+        // Toggle Lightning LoRA settings
+        function toggleLightningLora() {
+            const isEnabled = document.getElementById('useLightningLora').checked;
+            const stepsInput = document.getElementById('imageSteps');
+
+            if (isEnabled) {
+                // Lightning LoRA recommended: 20 steps
+                if (stepsInput.value > 20) {
+                    stepsInput.value = 20;
+                }
+                showToast('已啟用 Lightning LoRA（CFG=1, Steps建議20）', 'success', 3000);
+            } else {
+                // Standard mode: restore to 25 steps if at 20
+                if (stepsInput.value == 20) {
+                    stepsInput.value = 25;
+                }
+                showToast('已切換回標準模式', 'info', 2000);
+            }
+        }
+
         // ==================== New Storyboard Functions ====================
         function importFromMainPrompt() {
             const mainPrompt = document.getElementById('promptEditor').value;
@@ -2706,6 +2736,7 @@ Use # for characters, @ for artists. Keep prompts concise.`;
             const height = parseInt(document.getElementById('imageHeight').value);
             const steps = parseInt(document.getElementById('imageSteps').value);
             const checkpoint = document.getElementById('checkpointModel').value;
+            const useLightning = document.getElementById('useLightningLora').checked;
 
             // Use random seed if seed is -1
             const actualSeed = seed === -1 ? Math.floor(Math.random() * 1000000000) : seed;
@@ -2734,11 +2765,11 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                         "inputs": {
                             "seed": actualSeed,
                             "steps": steps,
-                            "cfg": 4.5,
-                            "sampler_name": "euler",
-                            "scheduler": "simple",
+                            "cfg": useLightning ? 1 : 4.5,
+                            "sampler_name": useLightning ? "euler_a" : "euler",
+                            "scheduler": useLightning ? "normal" : "simple",
                             "denoise": 1,
-                            "model": ["41", 0],
+                            "model": useLightning ? ["45", 0] : ["41", 0],
                             "positive": ["39", 0],
                             "negative": ["42", 0],
                             "latent_image": ["13", 0]
@@ -2777,7 +2808,7 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                     "39": {
                         "inputs": {
                             "text": ["38", 0],
-                            "clip": ["41", 1]
+                            "clip": useLightning ? ["44", 1] : ["41", 1]
                         },
                         "class_type": "CLIPTextEncode"
                     },
@@ -2790,7 +2821,7 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                     "42": {
                         "inputs": {
                             "text": "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> blurry, worst quality, low quality, deformed hands, bad anatomy, extra limbs, poorly drawn face, mutated, extra eyes, bad proportions",
-                            "clip": ["41", 1]
+                            "clip": useLightning ? ["44", 1] : ["41", 1]
                         },
                         "class_type": "CLIPTextEncode"
                     },
@@ -2803,6 +2834,28 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                     }
                 }
             };
+
+            // Add Lightning LoRA nodes if enabled
+            if (useLightning) {
+                workflow.prompt["44"] = {
+                    "inputs": {
+                        "lora_name": "Neta_Lumina_Lightning_LoRA.safetensors",
+                        "strength_model": 1.0,
+                        "strength_clip": 1.0,
+                        "model": ["41", 0],
+                        "clip": ["41", 1]
+                    },
+                    "class_type": "LoraLoader"
+                };
+
+                workflow.prompt["45"] = {
+                    "inputs": {
+                        "shift": 3.0,
+                        "model": ["44", 0]
+                    },
+                    "class_type": "ModelSamplingAuraFlow"
+                };
+            }
 
             // Submit to ComfyUI
             try {
