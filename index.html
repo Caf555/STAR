@@ -2451,6 +2451,11 @@ Now generate ${frameCount} prompts:`;
                 let currentSeed = appState.seedMode === 'fixed' ?
                     parseInt(document.getElementById('seedValue').value) : -1;
 
+                // For first-random mode, generate the seed for first frame
+                if (appState.seedMode === 'first-random') {
+                    currentSeed = Math.floor(Math.random() * 1000000000);
+                }
+
                 // Send each frame sequentially with progress indicator
                 for (let i = 0; i < frameCount; i++) {
                     // Update button text to show progress
@@ -2467,20 +2472,11 @@ Now generate ${frameCount} prompts:`;
                     // Determine seed for this frame
                     let frameSeed;
                     if (appState.seedMode === 'all-random') {
-                        frameSeed = -1;
+                        frameSeed = -1;  // Each frame gets random seed
                     } else if (appState.seedMode === 'first-random') {
-                        if (i === 0) {
-                            frameSeed = -1;
-                        } else {
-                            if (currentSeed === -1) {
-                                frameSeed = Math.floor(Math.random() * 1000000);
-                                currentSeed = frameSeed;
-                            } else {
-                                frameSeed = currentSeed;
-                            }
-                        }
+                        frameSeed = currentSeed;  // All frames use the same seed (generated above)
                     } else {
-                        frameSeed = currentSeed;
+                        frameSeed = currentSeed;  // Fixed mode: all frames use specified seed
                     }
 
                     // Send to ComfyUI and wait for completion
