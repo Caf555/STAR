@@ -2766,7 +2766,7 @@ Use # for characters, @ for artists. Keep prompts concise.`;
                             "seed": actualSeed,
                             "steps": steps,
                             "cfg": useLightning ? 1 : 4.5,
-                            "sampler_name": useLightning ? "euler_a" : "euler",
+                            "sampler_name": "euler",
                             "scheduler": useLightning ? "normal" : "simple",
                             "denoise": 1,
                             "model": useLightning ? ["45", 0] : ["41", 0],
@@ -2839,7 +2839,7 @@ Use # for characters, @ for artists. Keep prompts concise.`;
             if (useLightning) {
                 workflow.prompt["44"] = {
                     "inputs": {
-                        "lora_name": "Neta_Lumina_Lightning_LoRA.safetensors",
+                        "lora_name": "netayume_v3.5_lightning_v1.0.safetensors",
                         "strength_model": 1.0,
                         "strength_clip": 1.0,
                         "model": ["41", 0],
