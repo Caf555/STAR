@@ -428,6 +428,19 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
         }
 
+        .tooltip-tag {
+            font-family: monospace;
+            color: var(--accent-blue);
+            margin-bottom: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .tooltip-desc {
+            color: #ccc;
+            line-height: 1.6;
+        }
+
         .style-card:hover .style-tooltip {
             opacity: 1;
         }
@@ -981,6 +994,7 @@
                 <div class="tab active" onclick="switchTab('styles', this)">風格選擇</div>
                 <div class="tab" onclick="switchTab('characters', this)">角色圖鑑</div>
                 <div class="tab" onclick="switchTab('storyboard', this)">劇情分鏡</div>
+                <div class="tab" onclick="switchTab('visualEffects', this)">視覺效果</div>
                 <div class="tab" onclick="switchTab('history', this)">歷史紀錄</div>
             </div>
 
@@ -1180,6 +1194,32 @@
                 </div>
             </div>
 
+            <!-- Visual Effects Tab -->
+            <div class="tab-content" id="visualEffectsTab">
+                <h3 style="margin-bottom: 16px;">視覺效果設定</h3>
+
+                <!-- Camera Movements -->
+                <div style="margin-bottom: 24px;">
+                    <h4 style="color: var(--text-primary); margin-bottom: 12px;">1. 鏡頭運鏡 (Camera Movements)</h4>
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">控制攝影機的移動方式，影響影片的動態感。</p>
+                    <div class="style-grid" id="cameraMovements"></div>
+                </div>
+
+                <!-- Camera Angles -->
+                <div style="margin-bottom: 24px;">
+                    <h4 style="color: var(--text-primary); margin-bottom: 12px;">2. 拍攝視角 (Camera Angles)</h4>
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">決定觀眾觀看場景的角度。</p>
+                    <div class="style-grid" id="cameraAngles"></div>
+                </div>
+
+                <!-- Lighting -->
+                <div style="margin-bottom: 24px;">
+                    <h4 style="color: var(--text-primary); margin-bottom: 12px;">3. 光影設定 (Lighting)</h4>
+                    <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 12px;">設定畫面的光線氛圍。</p>
+                    <div class="style-grid" id="lightingEffects"></div>
+                </div>
+            </div>
+
             <!-- History Tab -->
             <div class="tab-content" id="historyTab">
                 <div class="history-grid" id="historyGrid"></div>
@@ -1256,7 +1296,41 @@
             { name: '達利', tag: '@salvador_dali', nameEn: 'Salvador Dali', description: '超現實主義大師，夢幻奇異的意象，精細寫實的技法，象徵主義濃厚' },
             { name: '安迪沃荷', tag: '@andy_warhol', nameEn: 'Andy Warhol', description: '普普藝術代表，鮮豔的平面色彩，重複圖案，大眾文化元素' },
             { name: '克林姆', tag: '@gustav_klimt', nameEn: 'Gustav Klimt', description: '維也納分離派，金箔裝飾華麗，圖案繁複精美，充滿象徵意涵' },
-            { name: '蒙克', tag: '@edvard_munch', nameEn: 'Edvard Munch', description: '表現主義先驅，扭曲的線條，強烈的情緒表達，色彩象徵內心焦慮' }
+            { name: '蒙克', tag: '@edvard_munch', nameEn: 'Edvard Munch', description: '表現主義先驅，扭曲的線條，強烈的情緒表達，色彩象徵內心焦慮' },
+            { name: 'Realistic (寫實)', tag: 'photorealistic, 8k, highly detailed', nameEn: 'Realistic', description: '追求極致像真，適合實拍感影片' },
+            { name: 'Cyberpunk (賽博龐克)', tag: 'cyberpunk aesthetics, futuristic', nameEn: 'Cyberpunk', description: '未來科幻感，高科技與低生活結合' },
+            { name: 'Vintage (復古)', tag: 'vintage 90s film grain, vhs aesthetic', nameEn: 'Vintage', description: '90年代膠卷顆粒或錄影帶質感' },
+            { name: 'B&W (黑白)', tag: 'black and white photography, noir', nameEn: 'B&W', description: '黑白攝影或黑色電影風格' }
+        ];
+
+        // ==================== Visual Effects ====================
+        const cameraMovements = [
+            { name: 'Static (固定)', tag: 'static shot', description: '鏡頭保持不動，強調主體動作' },
+            { name: 'Pan Left (左搖)', tag: 'pan left', description: '鏡頭水平向左旋轉' },
+            { name: 'Pan Right (右搖)', tag: 'pan right', description: '鏡頭水平向右旋轉' },
+            { name: 'Tilt Up (上仰)', tag: 'tilt up', description: '鏡頭向上垂直移動' },
+            { name: 'Tilt Down (下俯)', tag: 'tilt down', description: '鏡頭向下垂直移動' },
+            { name: 'Zoom In (推近)', tag: 'slow zoom in', description: '緩慢放大畫面，聚焦細節' },
+            { name: 'Zoom Out (拉遠)', tag: 'slow zoom out', description: '緩慢縮小畫面，展示環境' },
+            { name: 'Tracking (跟隨)', tag: 'tracking shot', description: '鏡頭跟隨主體移動' },
+            { name: 'FPV (第一人稱)', tag: 'FPV drone shot', description: '模擬無人機或第一人稱視角，速度感強' }
+        ];
+
+        const cameraAngles = [
+            { name: 'Eye Level (平視)', tag: 'eye level angle', description: '最自然的視角，與主體同高' },
+            { name: 'Low Angle (低角)', tag: 'low angle shot', description: '由下往上拍，讓主體顯得高大威嚴' },
+            { name: 'High Angle (高角)', tag: 'high angle shot', description: '由上往下拍，強調環境或弱化主體' },
+            { name: 'Overhead (頂視)', tag: 'overhead view', description: '垂直俯視 (上帝視角)' },
+            { name: 'Dutch Angle (斜角)', tag: 'dutch angle', description: '鏡頭傾斜，營造不安或動態張力' }
+        ];
+
+        const lightingEffects = [
+            { name: 'Natural (自然光)', tag: 'natural lighting', description: '真實、柔和的日光效果' },
+            { name: 'Cinematic (電影光)', tag: 'cinematic lighting', description: '高質感、層次豐富的電影布光' },
+            { name: 'Neon (霓虹)', tag: 'neon lighting', description: '賽博龐克風格常見的高飽和度彩色光' },
+            { name: 'Golden Hour (黃金光)', tag: 'golden hour', description: '日落/日出時的暖色調光線' },
+            { name: 'Dramatic (戲劇性)', tag: 'dramatic shadows, chiaroscuro', description: '強烈明暗對比，營造神祕感' },
+            { name: 'Studio (棚拍)', tag: 'soft studio lighting', description: '均勻、乾淨的專業攝影棚光線' }
         ];
 
         // ==================== Character Database ====================
@@ -1272,6 +1346,9 @@
         function initializeApp() {
             // Render builtin styles
             renderBuiltinStyles();
+
+            // Render visual effects
+            renderVisualEffects();
 
             // Character database will be loaded from CSV
 
@@ -1435,12 +1512,12 @@
                 card.className = 'style-card';
                 card.onclick = () => toggleStyle(style);
 
-                const tooltip = style.description ? `<div class="style-tooltip">${style.description}</div>` : '';
+                // Create tooltip with two-line display: name on first line, description on second line
+                const tooltip = style.description ? `<div class="style-tooltip"><div class="tooltip-tag">${style.tag}</div><div class="tooltip-desc">${style.description}</div></div>` : '';
 
                 card.innerHTML = `
                     ${tooltip}
                     <div class="style-card-name">${style.name}</div>
-                    <div class="style-card-tag">${style.tag}</div>
                 `;
 
                 if (appState.selectedStyles.find(s => s.tag === style.tag)) {
@@ -1469,6 +1546,68 @@
 
             updateStyleTags();
             renderBuiltinStyles();
+        }
+
+        // ==================== Visual Effects Functions ====================
+        function renderVisualEffects() {
+            renderEffectOptions('cameraMovements', cameraMovements);
+            renderEffectOptions('cameraAngles', cameraAngles);
+            renderEffectOptions('lightingEffects', lightingEffects);
+        }
+
+        function renderEffectOptions(containerId, effectsArray) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            effectsArray.forEach(effect => {
+                const card = document.createElement('div');
+                card.className = 'style-card';
+                card.onclick = () => toggleEffect(effect, containerId);
+
+                const tooltip = effect.description ?
+                    `<div class="style-tooltip"><div class="tooltip-tag">${effect.tag}</div><div class="tooltip-desc">${effect.description}</div></div>` : '';
+
+                card.innerHTML = `
+                    ${tooltip}
+                    <div class="style-card-name">${effect.name}</div>
+                `;
+
+                // Check if this effect is currently selected
+                const selectedEffect = appState[containerId];
+                if (selectedEffect && selectedEffect.tag === effect.tag) {
+                    card.classList.add('selected');
+                }
+
+                container.appendChild(card);
+            });
+        }
+
+        function toggleEffect(effect, category) {
+            const editor = document.getElementById('promptEditor');
+
+            // Remove previously selected effect from this category
+            const previousEffect = appState[category];
+            if (previousEffect) {
+                removeTagFromPrompt(previousEffect.tag);
+            }
+
+            // If clicking the same effect, deselect it
+            if (previousEffect && previousEffect.tag === effect.tag) {
+                appState[category] = null;
+            } else {
+                // Select the new effect
+                appState[category] = effect;
+                insertStyleTagAtStart(effect.tag);
+            }
+
+            // Re-render the specific category
+            if (category === 'cameraMovements') {
+                renderEffectOptions('cameraMovements', cameraMovements);
+            } else if (category === 'cameraAngles') {
+                renderEffectOptions('cameraAngles', cameraAngles);
+            } else if (category === 'lightingEffects') {
+                renderEffectOptions('lightingEffects', lightingEffects);
+            }
         }
 
         function insertStyleTagAtStart(tag) {
