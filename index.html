@@ -875,11 +875,21 @@
                     <button class="btn" onclick="clearPrompt()">🗑️ 清空</button>
                     <button class="btn" onclick="copyPrompt()">📋 複製</button>
                 </div>
+
+                <!-- Render Button -->
+                <button class="render-btn" onclick="renderImage()" style="margin-top: 12px;">
+                    ⚡ 極速生圖
+                </button>
             </div>
 
             <!-- ComfyUI Config Section -->
             <div class="panel-section">
-                <div class="section-title">ComfyUI 設定</div>
+                <div class="section-title" onclick="toggleComfyUIConfig()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                    <span>ComfyUI 設定</span>
+                    <span id="comfyUIConfigToggle" style="font-size: 14px;">▼</span>
+                </div>
+
+                <div id="comfyUIConfigContent" style="display: none;">
 
                 <div class="config-row">
                     <span class="config-label">伺服器</span>
@@ -903,7 +913,7 @@
                     <select id="checkpointModel" class="config-input" onchange="onModelChange()">
                         <option value="netayumeLuminaNetaLumina_v40.safetensors">NetaYume_v40 (推薦)</option>
                         <option value="NetaYumev35_pretrained_all_in_one.safetensors">NetaYume_v35</option>
-                        <option value="z_image_turbo_bf16.safetensors">Z-IMAGE</option>
+                        <option value="z_image_turbo_bf16.safetensors" selected>Z-IMAGE</option>
                     </select>
                 </div>
 
@@ -980,10 +990,7 @@
                         啟用後將在提示詞中自動加入 nsfw 標籤
                     </p>
                 </div>
-
-                <button class="render-btn" onclick="renderImage()">
-                    ⚡ 極速生圖
-                </button>
+                </div>
             </div>
         </div>
 
@@ -1395,6 +1402,9 @@
                 appState.history = JSON.parse(savedHistory);
                 renderHistory();
             }
+
+            // Initialize model-specific settings
+            onModelChange();
         }
 
         // ==================== File Upload Helpers ====================
@@ -2161,6 +2171,20 @@ Example output:
                 }
 
                 showToast('已切換至 NetaYume 模型', 'info', 2000);
+            }
+        }
+
+        // Toggle ComfyUI Config Section
+        function toggleComfyUIConfig() {
+            const content = document.getElementById('comfyUIConfigContent');
+            const toggle = document.getElementById('comfyUIConfigToggle');
+
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '▲';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = '▼';
             }
         }
 
