@@ -887,9 +887,10 @@
 
                 <div class="config-row">
                     <span class="config-label">大模型</span>
-                    <select id="checkpointModel" class="config-input">
+                    <select id="checkpointModel" class="config-input" onchange="onModelChange()">
                         <option value="netayumeLuminaNetaLumina_v40.safetensors">NetaYume_v40 (推薦)</option>
                         <option value="NetaYumev35_pretrained_all_in_one.safetensors">NetaYume_v35</option>
+                        <option value="z_image_turbo_bf16.safetensors">Z-IMAGE</option>
                     </select>
                 </div>
 
@@ -1995,6 +1996,35 @@ Example output:
             }
         }
 
+        // Handle model change event
+        function onModelChange() {
+            const modelSelect = document.getElementById('checkpointModel');
+            const lightningCheckbox = document.getElementById('useLightningLora');
+            const stepsInput = document.getElementById('imageSteps');
+            const isZImage = modelSelect.value === 'z_image_turbo_bf16.safetensors';
+
+            if (isZImage) {
+                // Disable Lightning LoRA for Z-IMAGE
+                lightningCheckbox.checked = false;
+                lightningCheckbox.disabled = true;
+
+                // Set recommended steps for Z-IMAGE (4 steps)
+                stepsInput.value = 4;
+
+                showToast('已切換至 Z-IMAGE 模型（4 steps, CFG=1）', 'info', 3000);
+            } else {
+                // Enable Lightning LoRA for NetaYume models
+                lightningCheckbox.disabled = false;
+
+                // Restore default steps
+                if (stepsInput.value == 4) {
+                    stepsInput.value = 25;
+                }
+
+                showToast('已切換至 NetaYume 模型', 'info', 2000);
+            }
+        }
+
         // ==================== New Storyboard Functions ====================
         function importFromMainPrompt() {
             const mainPrompt = document.getElementById('promptEditor').value;
@@ -2742,6 +2772,9 @@ Use # for characters, @ for artists. Keep prompts concise.`;
             const useLightning = document.getElementById('useLightningLora').checked;
             const useNSFW = document.getElementById('useNSFW').checked;
 
+            // Check if using Z-IMAGE model
+            const isZImage = checkpoint === 'z_image_turbo_bf16.safetensors';
+
             // Generate timestamp for filename (MMDD_HHMM)
             const now = new Date();
             const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -2775,103 +2808,196 @@ Use # for characters, @ for artists. Keep prompts concise.`;
             saveHistory();
             renderHistory();
 
-            // Build ComfyUI workflow for NetaYume Lumina
-            const workflow = {
-                prompt: {
-                    "6": {
-                        "inputs": {
-                            "seed": actualSeed,
-                            "steps": steps,
-                            "cfg": useLightning ? 1 : 4.5,
-                            "sampler_name": "euler",
-                            "scheduler": useLightning ? "normal" : "simple",
-                            "denoise": 1,
-                            "model": useLightning ? ["45", 0] : ["41", 0],
-                            "positive": ["39", 0],
-                            "negative": ["42", 0],
-                            "latent_image": ["13", 0]
+            let workflow;
+
+            // Build workflow based on model type
+            if (isZImage) {
+                // Z-IMAGE workflow
+                const filenamePrefix = `z-image_${timestamp}`;
+
+                workflow = {
+                    prompt: {
+                        "50": {
+                            "inputs": {
+                                "clip_name": "qwen_3_4b.safetensors",
+                                "type": "lumina2",
+                                "device": "default"
+                            },
+                            "class_type": "CLIPLoader"
                         },
-                        "class_type": "KSampler"
-                    },
-                    "9": {
-                        "inputs": {
-                            "filename_prefix": `NetaYume_${timestamp}`,
-                            "images": ["43", 0]
+                        "51": {
+                            "inputs": {
+                                "vae_name": "ae.safetensors"
+                            },
+                            "class_type": "VAELoader"
                         },
-                        "class_type": "SaveImage"
-                    },
-                    "13": {
-                        "inputs": {
-                            "width": width,
-                            "height": height,
-                            "batch_size": 1
+                        "52": {
+                            "inputs": {
+                                "unet_name": checkpoint,
+                                "weight_dtype": "default"
+                            },
+                            "class_type": "UNETLoader"
                         },
-                        "class_type": "EmptySD3LatentImage"
-                    },
-                    "37": {
-                        "inputs": {
-                            "value": prompt
+                        "13": {
+                            "inputs": {
+                                "width": width,
+                                "height": height,
+                                "batch_size": 1
+                            },
+                            "class_type": "EmptySD3LatentImage"
                         },
-                        "class_type": "PrimitiveStringMultiline"
-                    },
-                    "38": {
-                        "inputs": {
-                            "string_a": "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start>",
-                            "string_b": ["37", 0],
-                            "delimiter": " "
+                        "53": {
+                            "inputs": {
+                                "text": prompt,
+                                "clip": ["50", 0]
+                            },
+                            "class_type": "CLIPTextEncode"
                         },
-                        "class_type": "StringConcatenate"
-                    },
-                    "39": {
-                        "inputs": {
-                            "text": ["38", 0],
-                            "clip": useLightning ? ["44", 1] : ["41", 1]
+                        "54": {
+                            "inputs": {
+                                "model": ["52", 0],
+                                "shift": 3.0
+                            },
+                            "class_type": "ModelSamplingAuraFlow"
                         },
-                        "class_type": "CLIPTextEncode"
-                    },
-                    "41": {
-                        "inputs": {
-                            "ckpt_name": checkpoint
+                        "55": {
+                            "inputs": {
+                                "conditioning": ["53", 0]
+                            },
+                            "class_type": "ConditioningZeroOut"
                         },
-                        "class_type": "CheckpointLoaderSimple"
-                    },
-                    "42": {
-                        "inputs": {
-                            "text": "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> blurry, worst quality, low quality, deformed hands, bad anatomy, extra limbs, poorly drawn face, mutated, extra eyes, bad proportions",
-                            "clip": useLightning ? ["44", 1] : ["41", 1]
+                        "6": {
+                            "inputs": {
+                                "seed": actualSeed,
+                                "steps": steps,
+                                "cfg": 1,
+                                "sampler_name": "res_multistep",
+                                "scheduler": "simple",
+                                "denoise": 1,
+                                "model": ["54", 0],
+                                "positive": ["53", 0],
+                                "negative": ["55", 0],
+                                "latent_image": ["13", 0]
+                            },
+                            "class_type": "KSampler"
                         },
-                        "class_type": "CLIPTextEncode"
-                    },
-                    "43": {
-                        "inputs": {
-                            "samples": ["6", 0],
-                            "vae": ["41", 2]
+                        "56": {
+                            "inputs": {
+                                "samples": ["6", 0],
+                                "vae": ["51", 0]
+                            },
+                            "class_type": "VAEDecode"
                         },
-                        "class_type": "VAEDecode"
+                        "9": {
+                            "inputs": {
+                                "filename_prefix": filenamePrefix,
+                                "images": ["56", 0]
+                            },
+                            "class_type": "SaveImage"
+                        }
                     }
+                };
+            } else {
+                // NetaYume Lumina workflow
+                const filenamePrefix = `NetaYume_${timestamp}`;
+
+                workflow = {
+                    prompt: {
+                        "6": {
+                            "inputs": {
+                                "seed": actualSeed,
+                                "steps": steps,
+                                "cfg": useLightning ? 1 : 4.5,
+                                "sampler_name": "euler",
+                                "scheduler": useLightning ? "normal" : "simple",
+                                "denoise": 1,
+                                "model": useLightning ? ["45", 0] : ["41", 0],
+                                "positive": ["39", 0],
+                                "negative": ["42", 0],
+                                "latent_image": ["13", 0]
+                            },
+                            "class_type": "KSampler"
+                        },
+                        "9": {
+                            "inputs": {
+                                "filename_prefix": filenamePrefix,
+                                "images": ["43", 0]
+                            },
+                            "class_type": "SaveImage"
+                        },
+                        "13": {
+                            "inputs": {
+                                "width": width,
+                                "height": height,
+                                "batch_size": 1
+                            },
+                            "class_type": "EmptySD3LatentImage"
+                        },
+                        "37": {
+                            "inputs": {
+                                "value": prompt
+                            },
+                            "class_type": "PrimitiveStringMultiline"
+                        },
+                        "38": {
+                            "inputs": {
+                                "string_a": "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start>",
+                                "string_b": ["37", 0],
+                                "delimiter": " "
+                            },
+                            "class_type": "StringConcatenate"
+                        },
+                        "39": {
+                            "inputs": {
+                                "text": ["38", 0],
+                                "clip": useLightning ? ["44", 1] : ["41", 1]
+                            },
+                            "class_type": "CLIPTextEncode"
+                        },
+                        "41": {
+                            "inputs": {
+                                "ckpt_name": checkpoint
+                            },
+                            "class_type": "CheckpointLoaderSimple"
+                        },
+                        "42": {
+                            "inputs": {
+                                "text": "You are an assistant designed to generate anime images based on textual prompts. <Prompt Start> blurry, worst quality, low quality, deformed hands, bad anatomy, extra limbs, poorly drawn face, mutated, extra eyes, bad proportions",
+                                "clip": useLightning ? ["44", 1] : ["41", 1]
+                            },
+                            "class_type": "CLIPTextEncode"
+                        },
+                        "43": {
+                            "inputs": {
+                                "samples": ["6", 0],
+                                "vae": ["41", 2]
+                            },
+                            "class_type": "VAEDecode"
+                        }
+                    }
+                };
+
+                // Add Lightning LoRA nodes if enabled
+                if (useLightning) {
+                    workflow.prompt["44"] = {
+                        "inputs": {
+                            "lora_name": "netayume_v3.5_lightning_v1.0.safetensors",
+                            "strength_model": 1.0,
+                            "strength_clip": 1.0,
+                            "model": ["41", 0],
+                            "clip": ["41", 1]
+                        },
+                        "class_type": "LoraLoader"
+                    };
+
+                    workflow.prompt["45"] = {
+                        "inputs": {
+                            "shift": 3.0,
+                            "model": ["44", 0]
+                        },
+                        "class_type": "ModelSamplingAuraFlow"
+                    };
                 }
-            };
-
-            // Add Lightning LoRA nodes if enabled
-            if (useLightning) {
-                workflow.prompt["44"] = {
-                    "inputs": {
-                        "lora_name": "netayume_v3.5_lightning_v1.0.safetensors",
-                        "strength_model": 1.0,
-                        "strength_clip": 1.0,
-                        "model": ["41", 0],
-                        "clip": ["41", 1]
-                    },
-                    "class_type": "LoraLoader"
-                };
-
-                workflow.prompt["45"] = {
-                    "inputs": {
-                        "shift": 3.0,
-                        "model": ["44", 0]
-                    },
-                    "class_type": "ModelSamplingAuraFlow"
-                };
             }
 
             // Submit to ComfyUI
