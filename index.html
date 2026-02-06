@@ -1195,6 +1195,73 @@
                         </div>
                     </div>
 
+                    <!-- QWEN EDIT Options -->
+                    <div style="margin-top: 20px; padding: 16px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 16px;">
+                            <input type="checkbox" id="useQwenEdit" onchange="toggleQwenEditOptions()">
+                            <span style="color: var(--text-primary); font-weight: bold; font-size: 14px;">🎬 QWEN EDIT (連續編輯模式)</span>
+                        </label>
+
+                        <div id="qwenEditOptions" style="display: none;">
+                            <!-- First Image Source -->
+                            <div style="margin-bottom: 16px;">
+                                <div style="color: var(--text-primary); font-weight: 600; margin-bottom: 8px;">第一張圖來源：</div>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="radio" name="qwenFirstImageSource" value="upload" onchange="toggleQwenImageUpload()">
+                                        <span style="color: var(--text-primary);">上傳本地圖片</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="radio" name="qwenFirstImageSource" value="generate" checked onchange="toggleQwenImageUpload()">
+                                        <span style="color: var(--text-primary);">正常生成 (使用當前大模型)</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Image Upload Section -->
+                            <div id="qwenImageUploadSection" style="display: none; margin-bottom: 16px; padding: 12px; background: var(--bg-darker); border-radius: 6px;">
+                                <input type="file" id="qwenImageUpload" accept="image/*" onchange="handleQwenImageUpload(event)" style="margin-bottom: 8px;">
+                                <div id="qwenImagePreview" style="display: none;">
+                                    <img id="qwenPreviewImg" style="max-width: 200px; max-height: 200px; border-radius: 4px; margin-top: 8px;" />
+                                    <div id="qwenImageInfo" style="color: var(--text-secondary); font-size: 12px; margin-top: 4px;"></div>
+                                </div>
+                            </div>
+
+                            <!-- Size Settings -->
+                            <div style="margin-bottom: 16px;">
+                                <div style="color: var(--text-primary); font-weight: 600; margin-bottom: 8px;">輸出圖片尺寸設定：</div>
+                                <div id="qwenReferenceSize" style="color: var(--text-secondary); font-size: 12px; margin-bottom: 8px;">參考圖尺寸：未載入</div>
+
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="radio" name="qwenSizeMode" value="reference" checked>
+                                        <span style="color: var(--text-primary);">使用參考圖尺寸</span>
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="radio" name="qwenSizeMode" value="custom">
+                                        <span style="color: var(--text-primary);">保持參考圖比例，自訂尺寸</span>
+                                    </label>
+                                    <div id="qwenCustomSizeInputs" style="display: none; margin-left: 24px; margin-top: 4px;">
+                                        <div style="display: flex; gap: 8px; align-items: center;">
+                                            <span style="color: var(--text-secondary); font-size: 12px;">寬度:</span>
+                                            <input type="number" id="qwenCustomWidth" value="1024" min="256" max="2048" step="64" style="width: 100px; padding: 4px; background: var(--bg-darker); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
+                                            <span style="color: var(--text-secondary); font-size: 12px;">高度:</span>
+                                            <input type="number" id="qwenCustomHeight" value="1024" min="256" max="2048" step="64" style="width: 100px; padding: 4px; background: var(--bg-darker); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);">
+                                            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                                                <input type="checkbox" id="qwenLockRatio" checked>
+                                                <span style="color: var(--text-secondary); font-size: 12px;">鎖定比例</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                        <input type="radio" name="qwenSizeMode" value="global">
+                                        <span style="color: var(--text-primary);">使用全局設定 (從 ComfyUI 設定讀取)</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <button class="render-btn" onclick="batchRenderNew()" style="margin-top: 12px;">
                         🚀 批次生圖
                     </button>
@@ -1262,7 +1329,14 @@
             seedValue: -1,
             history: [],
             lightboxIndex: 0,
-            lmStudioUrl: 'http://localhost:1234/v1/chat/completions'
+            lmStudioUrl: 'http://localhost:1234/v1/chat/completions',
+            qwenEdit: {
+                enabled: false,
+                uploadedImage: null,
+                uploadedImageName: null,
+                referenceWidth: 1024,
+                referenceHeight: 1024
+            }
         };
 
         // ==================== Toast Notification ====================
@@ -2188,6 +2262,341 @@ Example output:
             }
         }
 
+        // ==================== QWEN EDIT Functions ====================
+        function toggleQwenEditOptions() {
+            const checkbox = document.getElementById('useQwenEdit');
+            const options = document.getElementById('qwenEditOptions');
+            appState.qwenEdit.enabled = checkbox.checked;
+
+            if (checkbox.checked) {
+                options.style.display = 'block';
+                // Initialize size mode listeners
+                initQwenSizeListeners();
+            } else {
+                options.style.display = 'none';
+            }
+        }
+
+        function toggleQwenImageUpload() {
+            const uploadRadio = document.querySelector('input[name="qwenFirstImageSource"][value="upload"]');
+            const uploadSection = document.getElementById('qwenImageUploadSection');
+
+            if (uploadRadio.checked) {
+                uploadSection.style.display = 'block';
+            } else {
+                uploadSection.style.display = 'none';
+            }
+        }
+
+        function handleQwenImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    // Store image data
+                    appState.qwenEdit.uploadedImage = file;
+                    appState.qwenEdit.referenceWidth = img.width;
+                    appState.qwenEdit.referenceHeight = img.height;
+
+                    // Update preview
+                    const previewImg = document.getElementById('qwenPreviewImg');
+                    const previewDiv = document.getElementById('qwenImagePreview');
+                    const infoDiv = document.getElementById('qwenImageInfo');
+                    const sizeDiv = document.getElementById('qwenReferenceSize');
+
+                    previewImg.src = e.target.result;
+                    previewDiv.style.display = 'block';
+                    infoDiv.textContent = `${file.name} (${img.width}×${img.height})`;
+                    sizeDiv.textContent = `參考圖尺寸：${img.width}×${img.height}`;
+
+                    // Update custom size inputs
+                    document.getElementById('qwenCustomWidth').value = img.width;
+                    document.getElementById('qwenCustomHeight').value = img.height;
+
+                    showToast('圖片載入成功', 'success');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function initQwenSizeListeners() {
+            const sizeRadios = document.querySelectorAll('input[name="qwenSizeMode"]');
+            const customInputs = document.getElementById('qwenCustomSizeInputs');
+            const widthInput = document.getElementById('qwenCustomWidth');
+            const heightInput = document.getElementById('qwenCustomHeight');
+            const lockRatio = document.getElementById('qwenLockRatio');
+
+            // Show/hide custom size inputs
+            sizeRadios.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    if (radio.value === 'custom') {
+                        customInputs.style.display = 'block';
+                    } else {
+                        customInputs.style.display = 'none';
+                    }
+                });
+            });
+
+            // Handle aspect ratio locking
+            let isUpdating = false;
+
+            widthInput.addEventListener('input', () => {
+                if (isUpdating || !lockRatio.checked) return;
+                isUpdating = true;
+
+                const ratio = appState.qwenEdit.referenceWidth / appState.qwenEdit.referenceHeight;
+                heightInput.value = Math.round(widthInput.value / ratio / 64) * 64; // Round to nearest 64
+
+                isUpdating = false;
+            });
+
+            heightInput.addEventListener('input', () => {
+                if (isUpdating || !lockRatio.checked) return;
+                isUpdating = true;
+
+                const ratio = appState.qwenEdit.referenceWidth / appState.qwenEdit.referenceHeight;
+                widthInput.value = Math.round(heightInput.value * ratio / 64) * 64; // Round to nearest 64
+
+                isUpdating = false;
+            });
+        }
+
+        async function uploadImageToComfyUI(file) {
+            const comfyUrl = document.getElementById('comfyUrl').value;
+
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('subfolder', 'qwen_edit');
+            formData.append('type', 'input');
+
+            try {
+                const response = await fetch(`${comfyUrl}/upload/image`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Upload failed: ${response.status}`);
+                }
+
+                const data = await response.json();
+                return {
+                    name: data.name,
+                    subfolder: data.subfolder || 'qwen_edit'
+                };
+            } catch (error) {
+                console.error('Image upload error:', error);
+                throw error;
+            }
+        }
+
+        async function submitQwenEditToComfyUI(params) {
+            const {
+                previousImageName,
+                previousImageSubfolder,
+                changePrompt,
+                outputWidth,
+                outputHeight,
+                seed,
+                label
+            } = params;
+
+            const url = document.getElementById('comfyUrl').value;
+
+            // Generate timestamp for filename
+            const now = new Date();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const hour = String(now.getHours()).padStart(2, '0');
+            const minute = String(now.getMinutes()).padStart(2, '0');
+            const timestamp = `${month}${day}_${hour}${minute}`;
+
+            const actualSeed = seed === -1 ? Math.floor(Math.random() * 1000000000) : seed;
+
+            // Create history entry
+            const historyItem = {
+                id: Date.now(),
+                prompt: changePrompt,
+                status: 'queue',
+                timestamp: new Date().toLocaleString('zh-TW'),
+                label: label,
+                width: outputWidth,
+                height: outputHeight,
+                seed: actualSeed,
+                imageUrl: null
+            };
+
+            appState.history.unshift(historyItem);
+            saveHistory();
+            renderHistory();
+
+            // Build QWEN EDIT workflow
+            const workflow = {
+                prompt: {
+                    "50": {
+                        "inputs": {
+                            "ckpt_name": "Qwen-Rapid-AIO-NSFW-v23.safetensors"
+                        },
+                        "class_type": "CheckpointLoaderSimple"
+                    },
+                    "51": {
+                        "inputs": {
+                            "image": previousImageName,
+                            "upload": "image"
+                        },
+                        "class_type": "LoadImage"
+                    },
+                    "52": {
+                        "inputs": {
+                            "width": outputWidth,
+                            "height": outputHeight,
+                            "batch_size": 1
+                        },
+                        "class_type": "EmptyLatentImage"
+                    },
+                    "53": {
+                        "inputs": {
+                            "clip": ["50", 1],
+                            "vae": ["50", 2],
+                            "image1": ["51", 0],
+                            "target_latent": ["52", 0],
+                            "prompt": changePrompt
+                        },
+                        "class_type": "TextEncodeQwenImageEditPlus"
+                    },
+                    "54": {
+                        "inputs": {
+                            "clip": ["50", 1],
+                            "vae": ["50", 2],
+                            "target_latent": ["52", 0],
+                            "prompt": ""
+                        },
+                        "class_type": "TextEncodeQwenImageEditPlus"
+                    },
+                    "55": {
+                        "inputs": {
+                            "seed": actualSeed,
+                            "steps": 4,
+                            "cfg": 1,
+                            "sampler_name": "euler_ancestral",
+                            "scheduler": "beta",
+                            "denoise": 1,
+                            "model": ["50", 0],
+                            "positive": ["53", 0],
+                            "negative": ["54", 0],
+                            "latent_image": ["52", 0]
+                        },
+                        "class_type": "KSampler"
+                    },
+                    "56": {
+                        "inputs": {
+                            "samples": ["55", 0],
+                            "vae": ["50", 2]
+                        },
+                        "class_type": "VAEDecode"
+                    },
+                    "57": {
+                        "inputs": {
+                            "filename_prefix": `QwenEdit_${timestamp}`,
+                            "images": ["56", 0]
+                        },
+                        "class_type": "SaveImage"
+                    }
+                }
+            };
+
+            // If there's a subfolder for the previous image, add it to LoadImage
+            if (previousImageSubfolder) {
+                workflow.prompt["51"].inputs.subfolder = previousImageSubfolder;
+            }
+
+            // Submit to ComfyUI
+            try {
+                const response = await fetch(`${url}/prompt`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(workflow)
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`ComfyUI 提交失敗: ${response.status} ${errorText}`);
+                }
+
+                const data = await response.json();
+                historyItem.promptId = data.prompt_id;
+
+                // Start polling for result
+                const result = await pollComfyUIResultWithReturn(historyItem.id, data.prompt_id);
+
+                return result;
+
+            } catch (error) {
+                console.error('Submit to ComfyUI error:', error);
+                historyItem.status = 'failed';
+                historyItem.error = error.message;
+                saveHistory();
+                renderHistory();
+                throw error;
+            }
+        }
+
+        async function pollComfyUIResultWithReturn(historyId, promptId) {
+            const url = document.getElementById('comfyUrl').value;
+            const maxAttempts = 100;
+            let attempts = 0;
+
+            return new Promise((resolve, reject) => {
+                const poll = setInterval(async () => {
+                    attempts++;
+
+                    if (attempts > maxAttempts) {
+                        clearInterval(poll);
+                        updateHistoryStatus(historyId, 'failed');
+                        reject(new Error('Polling timeout'));
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`${url}/history/${promptId}`);
+                        if (!response.ok) return;
+
+                        const data = await response.json();
+
+                        if (data[promptId] && data[promptId].outputs) {
+                            clearInterval(poll);
+
+                            // Get image URL and filename
+                            const outputs = data[promptId].outputs;
+                            const saveImageNode = Object.values(outputs).find(node => node.images);
+
+                            if (saveImageNode && saveImageNode.images.length > 0) {
+                                const image = saveImageNode.images[0];
+                                const imageUrl = `${url}/view?filename=${image.filename}&subfolder=${image.subfolder || ''}&type=${image.type}`;
+
+                                updateHistoryStatus(historyId, 'success', imageUrl);
+
+                                resolve({
+                                    imageUrl: imageUrl,
+                                    imageName: image.filename,
+                                    imageSubfolder: image.subfolder || ''
+                                });
+                            } else {
+                                reject(new Error('No image found in output'));
+                            }
+                        }
+
+                    } catch (error) {
+                        console.error('Polling error:', error);
+                    }
+                }, 2000);
+            });
+        }
+
         // ==================== New Storyboard Functions ====================
         function importFromMainPrompt() {
             const mainPrompt = document.getElementById('promptEditor').value;
@@ -2310,7 +2719,37 @@ Output the prompt directly:`;
             btn.textContent = '⏳ 生成中...';
 
             try {
-                const systemPrompt = `You are a prompt generator. Generate EXACTLY ${frameCount} prompts.
+                // Check if QWEN EDIT mode is enabled
+                const useQwenEdit = document.getElementById('useQwenEdit')?.checked || false;
+
+                let systemPrompt;
+                if (useQwenEdit) {
+                    // QWEN EDIT mode: generate incremental change descriptions
+                    systemPrompt = `You are generating incremental change descriptions for image editing.
+Generate EXACTLY ${frameCount} descriptions, each describing ONLY the changes from the previous frame.
+
+CRITICAL RULES:
+- Describe ONLY what changes, not the entire scene
+- Use editing instructions format (e.g., "change expression to happy", "add a hat", "remove background objects")
+- Keep descriptions focused and concise
+- NO explanations, NO introductions, NO conclusions
+- NO labels like "PROMPT:", "Here are", "**", or any formatting
+- Start immediately with "1. " on the first line
+- Each line: number + period + space + change description
+- Stop after line ${frameCount}
+
+Variable elements: ${variableInput}
+Story: ${storyDesc}
+
+Example format (for 3 frames):
+1. add smile, raise right hand
+2. change to laughing, both hands up
+3. turn head to left, eyes closed
+
+Now generate ${frameCount} change descriptions:`;
+                } else {
+                    // Normal mode: generate complete scene descriptions
+                    systemPrompt = `You are a prompt generator. Generate EXACTLY ${frameCount} prompts.
 
 CRITICAL RULES:
 - Output ONLY ${frameCount} numbered lines
@@ -2330,6 +2769,7 @@ Example format (for 3 items):
 3. determined face, clenched fist
 
 Now generate ${frameCount} prompts:`;
+                }
 
                 const response = await fetch(appState.lmStudioUrl, {
                     method: 'POST',
@@ -2633,8 +3073,9 @@ Now generate ${frameCount} prompts:`;
 
             const styleSubject = document.getElementById('styleSubjectInput').value.trim();
             const fixedItems = document.getElementById('fixedItemsResult').value.trim();
+            const useQwenEdit = document.getElementById('useQwenEdit')?.checked || false;
 
-            if (!fixedItems) {
+            if (!fixedItems && !useQwenEdit) {
                 showToast('請先生成固定項目', 'info');
                 return;
             }
@@ -2651,48 +3092,183 @@ Now generate ${frameCount} prompts:`;
             btn.textContent = '⏳ 批次生成中...';
 
             try {
-                let currentSeed = appState.seedMode === 'fixed' ?
-                    parseInt(document.getElementById('seedValue').value) : -1;
+                if (useQwenEdit) {
+                    // ===== QWEN EDIT MODE =====
+                    btn.textContent = '⏳ QWEN EDIT 模式啟動...';
 
-                // For first-random mode, generate the seed for first frame
-                if (appState.seedMode === 'first-random') {
-                    currentSeed = Math.floor(Math.random() * 1000000000);
-                }
+                    // Step 1: Get first image source
+                    const firstImageSource = document.querySelector('input[name="qwenFirstImageSource"]:checked')?.value || 'generate';
+                    let referenceImageName, referenceImageSubfolder;
+                    let referenceWidth = appState.qwenEdit.referenceWidth;
+                    let referenceHeight = appState.qwenEdit.referenceHeight;
 
-                // Send each frame sequentially with progress indicator
-                for (let i = 0; i < frameCount; i++) {
-                    // Update button text to show progress
-                    btn.textContent = `⏳ 發送中 ${i + 1}/${frameCount}...`;
+                    if (firstImageSource === 'upload') {
+                        // Upload the image to ComfyUI
+                        if (!appState.qwenEdit.uploadedImage) {
+                            throw new Error('請先上傳參考圖片');
+                        }
 
-                    const variableItem = appState.storyboardData.variableItems[i];
+                        btn.textContent = '⏳ 上傳參考圖片...';
+                        const uploadResult = await uploadImageToComfyUI(appState.qwenEdit.uploadedImage);
+                        referenceImageName = uploadResult.name;
+                        referenceImageSubfolder = uploadResult.subfolder;
 
-                    // Combine: style+subject + variable + fixed + quality tags
-                    const qualityTags = 'masterpiece, best quality, ultra-detailed, 8k, high resolution, sharp focus';
-                    const fullPrompt = [styleSubject, variableItem, fixedItems, qualityTags]
-                        .filter(p => p)
-                        .join(', ');
-
-                    // Determine seed for this frame
-                    let frameSeed;
-                    if (appState.seedMode === 'all-random') {
-                        frameSeed = -1;  // Each frame gets random seed
-                    } else if (appState.seedMode === 'first-random') {
-                        frameSeed = currentSeed;  // All frames use the same seed (generated above)
                     } else {
-                        frameSeed = currentSeed;  // Fixed mode: all frames use specified seed
-                    }
+                        // Generate first frame using normal workflow
+                        btn.textContent = '⏳ 生成第一張圖片...';
 
-                    // Send to ComfyUI and wait for completion
-                    await submitToComfyUI(fullPrompt, frameSeed, `Storyboard ${i + 1}/${frameCount}`);
+                        const variableItem = appState.storyboardData.variableItems[0];
+                        const qualityTags = 'masterpiece, best quality, ultra-detailed, 8k, high resolution, sharp focus';
+                        const fullPrompt = [styleSubject, variableItem, fixedItems, qualityTags]
+                            .filter(p => p)
+                            .join(', ');
 
-                    // Wait 1.5 seconds before sending next frame to maintain order
-                    if (i < frameCount - 1) {
+                        const globalWidth = parseInt(document.getElementById('imageWidth').value);
+                        const globalHeight = parseInt(document.getElementById('imageHeight').value);
+
+                        let currentSeed = appState.seedMode === 'fixed' ?
+                            parseInt(document.getElementById('seedValue').value) : -1;
+                        if (appState.seedMode === 'first-random') {
+                            currentSeed = Math.floor(Math.random() * 1000000000);
+                        }
+
+                        // Generate first frame and wait for result
+                        const firstResult = await new Promise((resolve, reject) => {
+                            let resolveFunc;
+                            const originalPoll = window.pollComfyUIResult;
+
+                            // Temporarily override pollComfyUIResult to capture result
+                            window.pollComfyUIResult = async (historyId, promptId) => {
+                                const result = await pollComfyUIResultWithReturn(historyId, promptId);
+                                resolve(result);
+                            };
+
+                            submitToComfyUI(fullPrompt, currentSeed, `Storyboard 1/${frameCount}`)
+                                .catch(reject)
+                                .finally(() => {
+                                    window.pollComfyUIResult = originalPoll;
+                                });
+                        });
+
+                        referenceImageName = firstResult.imageName;
+                        referenceImageSubfolder = firstResult.imageSubfolder;
+                        referenceWidth = globalWidth;
+                        referenceHeight = globalHeight;
+
                         await new Promise(resolve => setTimeout(resolve, 1500));
                     }
+
+                    // Step 2: Determine output size
+                    const sizeMode = document.querySelector('input[name="qwenSizeMode"]:checked')?.value || 'reference';
+                    let outputWidth, outputHeight;
+
+                    if (sizeMode === 'reference') {
+                        outputWidth = referenceWidth;
+                        outputHeight = referenceHeight;
+                    } else if (sizeMode === 'custom') {
+                        outputWidth = parseInt(document.getElementById('qwenCustomWidth').value);
+                        outputHeight = parseInt(document.getElementById('qwenCustomHeight').value);
+                    } else {
+                        // global
+                        outputWidth = parseInt(document.getElementById('imageWidth').value);
+                        outputHeight = parseInt(document.getElementById('imageHeight').value);
+                    }
+
+                    // Step 3: Process subsequent frames with QWEN EDIT
+                    let previousImageName = referenceImageName;
+                    let previousImageSubfolder = referenceImageSubfolder;
+
+                    const startFrame = firstImageSource === 'upload' ? 0 : 1;
+
+                    for (let i = startFrame; i < frameCount; i++) {
+                        btn.textContent = `⏳ QWEN EDIT ${i + 1}/${frameCount}...`;
+
+                        const changePrompt = appState.storyboardData.variableItems[i];
+
+                        // Determine seed for this frame
+                        let frameSeed;
+                        let currentSeed = appState.seedMode === 'fixed' ?
+                            parseInt(document.getElementById('seedValue').value) : -1;
+
+                        if (appState.seedMode === 'all-random') {
+                            frameSeed = -1;
+                        } else if (appState.seedMode === 'first-random') {
+                            if (!currentSeed || currentSeed === -1) {
+                                currentSeed = Math.floor(Math.random() * 1000000000);
+                            }
+                            frameSeed = currentSeed;
+                        } else {
+                            frameSeed = currentSeed;
+                        }
+
+                        const result = await submitQwenEditToComfyUI({
+                            previousImageName: previousImageName,
+                            previousImageSubfolder: previousImageSubfolder,
+                            changePrompt: changePrompt,
+                            outputWidth: outputWidth,
+                            outputHeight: outputHeight,
+                            seed: frameSeed,
+                            label: `QwenEdit ${i + 1}/${frameCount}`
+                        });
+
+                        previousImageName = result.imageName;
+                        previousImageSubfolder = result.imageSubfolder;
+
+                        // Wait between requests
+                        if (i < frameCount - 1) {
+                            await new Promise(resolve => setTimeout(resolve, 1500));
+                        }
+                    }
+
+                    showToast(`QWEN EDIT 完成！已生成 ${frameCount} 張圖片`, 'success');
+
+                } else {
+                    // ===== NORMAL MODE =====
+                    let currentSeed = appState.seedMode === 'fixed' ?
+                        parseInt(document.getElementById('seedValue').value) : -1;
+
+                    // For first-random mode, generate the seed for first frame
+                    if (appState.seedMode === 'first-random') {
+                        currentSeed = Math.floor(Math.random() * 1000000000);
+                    }
+
+                    // Send each frame sequentially with progress indicator
+                    for (let i = 0; i < frameCount; i++) {
+                        // Update button text to show progress
+                        btn.textContent = `⏳ 發送中 ${i + 1}/${frameCount}...`;
+
+                        const variableItem = appState.storyboardData.variableItems[i];
+
+                        // Combine: style+subject + variable + fixed + quality tags
+                        const qualityTags = 'masterpiece, best quality, ultra-detailed, 8k, high resolution, sharp focus';
+                        const fullPrompt = [styleSubject, variableItem, fixedItems, qualityTags]
+                            .filter(p => p)
+                            .join(', ');
+
+                        // Determine seed for this frame
+                        let frameSeed;
+                        if (appState.seedMode === 'all-random') {
+                            frameSeed = -1;  // Each frame gets random seed
+                        } else if (appState.seedMode === 'first-random') {
+                            frameSeed = currentSeed;  // All frames use the same seed (generated above)
+                        } else {
+                            frameSeed = currentSeed;  // Fixed mode: all frames use specified seed
+                        }
+
+                        // Send to ComfyUI and wait for completion
+                        await submitToComfyUI(fullPrompt, frameSeed, `Storyboard ${i + 1}/${frameCount}`);
+
+                        // Wait 1.5 seconds before sending next frame to maintain order
+                        if (i < frameCount - 1) {
+                            await new Promise(resolve => setTimeout(resolve, 1500));
+                        }
+                    }
+
+                    showToast(`已依序發送 ${frameCount} 張圖片至 ComfyUI`, 'success');
                 }
 
-                showToast(`已依序發送 ${frameCount} 張圖片至 ComfyUI`, 'success');
             } catch (error) {
+                console.error('Batch render error:', error);
                 showToast('批次生圖失敗: ' + error.message, 'error');
             } finally {
                 btn.disabled = false;
