@@ -2597,6 +2597,38 @@ Example output:
             });
         }
 
+        // Re-upload a generated output image back to ComfyUI's input directory
+        // so that LoadImage can find it in subsequent iterations
+        async function reuploadOutputToInput(imageUrl, filename) {
+            const comfyUrl = document.getElementById('comfyUrl').value;
+
+            // Fetch the image from ComfyUI output
+            const response = await fetch(imageUrl);
+            const blob = await response.blob();
+
+            // Create a File object and upload to ComfyUI input directory
+            const file = new File([blob], filename, { type: 'image/png' });
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('subfolder', 'qwen_edit');
+            formData.append('type', 'input');
+
+            const uploadResponse = await fetch(`${comfyUrl}/upload/image`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!uploadResponse.ok) {
+                throw new Error(`Failed to re-upload image to input: ${uploadResponse.status}`);
+            }
+
+            const uploadData = await uploadResponse.json();
+            return {
+                name: uploadData.name,
+                subfolder: uploadData.subfolder || 'qwen_edit'
+            };
+        }
+
         // ==================== New Storyboard Functions ====================
         function importFromMainPrompt() {
             const mainPrompt = document.getElementById('promptEditor').value;
@@ -3150,8 +3182,10 @@ Now generate ${frameCount} prompts:`;
                                 });
                         });
 
-                        referenceImageName = firstResult.imageName;
-                        referenceImageSubfolder = firstResult.imageSubfolder;
+                        // Re-upload the generated first image to input directory for LoadImage
+                        const reuploadFirst = await reuploadOutputToInput(firstResult.imageUrl, firstResult.imageName);
+                        referenceImageName = reuploadFirst.name;
+                        referenceImageSubfolder = reuploadFirst.subfolder;
                         referenceWidth = globalWidth;
                         referenceHeight = globalHeight;
 
@@ -3211,8 +3245,10 @@ Now generate ${frameCount} prompts:`;
                             label: `QwenEdit ${i + 1}/${frameCount}`
                         });
 
-                        previousImageName = result.imageName;
-                        previousImageSubfolder = result.imageSubfolder;
+                        // Re-upload the output image to input directory so LoadImage can find it
+                        const reupload = await reuploadOutputToInput(result.imageUrl, result.imageName);
+                        previousImageName = reupload.name;
+                        previousImageSubfolder = reupload.subfolder;
 
                         // Wait between requests
                         if (i < frameCount - 1) {
