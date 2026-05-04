@@ -2386,7 +2386,8 @@ Example output:
                 const data = await response.json();
                 return {
                     name: data.name,
-                    subfolder: data.subfolder || 'qwen_edit'
+                    subfolder: data.subfolder || 'qwen_edit',
+                    type: 'input'
                 };
             } catch (error) {
                 console.error('Image upload error:', error);
@@ -2398,6 +2399,7 @@ Example output:
             const {
                 previousImageName,
                 previousImageSubfolder,
+                previousImageType,
                 changePrompt,
                 outputWidth,
                 outputHeight,
@@ -2446,6 +2448,7 @@ Example output:
                     "51": {
                         "inputs": {
                             "image": previousImageName,
+                            "type": previousImageType || "output",
                             "upload": "image"
                         },
                         "class_type": "LoadImage"
@@ -2583,7 +2586,8 @@ Example output:
                                 resolve({
                                     imageUrl: imageUrl,
                                     imageName: image.filename,
-                                    imageSubfolder: image.subfolder || ''
+                                    imageSubfolder: image.subfolder || '',
+                                    imageType: image.type || 'output'
                                 });
                             } else {
                                 reject(new Error('No image found in output'));
@@ -3152,6 +3156,7 @@ Now generate ${frameCount} prompts:`;
 
                         referenceImageName = firstResult.imageName;
                         referenceImageSubfolder = firstResult.imageSubfolder;
+                        previousImageType = firstResult.imageType || 'output';
                         referenceWidth = globalWidth;
                         referenceHeight = globalHeight;
 
@@ -3177,6 +3182,7 @@ Now generate ${frameCount} prompts:`;
                     // Step 3: Process subsequent frames with QWEN EDIT
                     let previousImageName = referenceImageName;
                     let previousImageSubfolder = referenceImageSubfolder;
+                    let previousImageType = firstImageSource === 'upload' ? 'input' : 'output';
 
                     const startFrame = firstImageSource === 'upload' ? 0 : 1;
 
@@ -3204,6 +3210,7 @@ Now generate ${frameCount} prompts:`;
                         const result = await submitQwenEditToComfyUI({
                             previousImageName: previousImageName,
                             previousImageSubfolder: previousImageSubfolder,
+                            previousImageType: previousImageType,
                             changePrompt: changePrompt,
                             outputWidth: outputWidth,
                             outputHeight: outputHeight,
@@ -3213,6 +3220,7 @@ Now generate ${frameCount} prompts:`;
 
                         previousImageName = result.imageName;
                         previousImageSubfolder = result.imageSubfolder;
+                        previousImageType = result.imageType || 'output';
 
                         // Wait between requests
                         if (i < frameCount - 1) {
