@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-fontsize="md" data-fx="on">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星淵迴響 — STAR: Abyssal Echoes</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext x='16' y='24' font-size='24' text-anchor='middle'%3E%F0%9F%8C%8C%3C/text%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+    <div id="starfield" aria-hidden="true"></div>
+
+    <!-- ============ 主選單 ============ -->
+    <section id="screen-menu" class="screen active" aria-label="主選單">
+        <div class="menu-title-block">
+            <div class="menu-title-kicker">STAR: Abyssal Echoes</div>
+            <h1 class="menu-title">星淵迴響</h1>
+            <div class="menu-title-sub">弦斷之處,它在聽</div>
+        </div>
+        <nav class="menu-buttons">
+            <button id="btn-new" class="menu-btn" type="button">▸ 新遊戲</button>
+            <button id="btn-continue" class="menu-btn" type="button" disabled>▸ 繼續(自動存檔)</button>
+            <button id="btn-load" class="menu-btn" type="button">▸ 讀取存檔</button>
+            <button id="btn-settings" class="menu-btn" type="button">▸ 設定</button>
+        </nav>
+        <div id="menu-version" class="menu-version"></div>
+    </section>
+
+    <!-- ============ 遊戲畫面 ============ -->
+    <section id="screen-game" class="screen" aria-label="遊戲畫面">
+        <header class="hud-header">
+            <div class="hud-logo">星淵迴響</div>
+            <div id="hud-chapter" class="hud-chapter"></div>
+            <div class="hud-header-btns">
+                <button id="btn-game-save" class="icon-btn" type="button">💾 存讀檔</button>
+                <button id="btn-game-settings" class="icon-btn" type="button">⚙ 設定</button>
+                <button id="btn-game-menu" class="icon-btn" type="button">☰ 主選單</button>
+            </div>
+        </header>
+
+        <div class="hud-grid">
+            <!-- 左欄:小隊 / 艦船 -->
+            <aside id="panel-left" class="hud-panel" aria-label="小隊狀態">
+                <div class="panel-block">
+                    <h3>小隊狀態</h3>
+                    <div class="member-name"><span id="hud-player-name"></span>
+                        <span class="cls" id="hud-player-class"></span></div>
+                    <div class="stat-row"><span class="label">等級</span><span class="value" id="hud-level"></span></div>
+                    <div class="stat-row"><span class="label">生命</span><span class="value" id="hud-hp"></span></div>
+                    <div class="bar hp"><i id="hud-hp-bar"></i></div>
+                    <div class="stat-row"><span class="label">能量</span><span class="value" id="hud-ep"></span></div>
+                    <div class="bar ep"><i id="hud-ep-bar"></i></div>
+                    <div class="stat-row"><span class="label">侵蝕</span><span class="value" id="hud-erosion"></span></div>
+                    <div class="bar erosion"><i id="hud-erosion-bar"></i></div>
+                    <div class="stat-row"><span class="label">學分</span><span class="value" id="hud-credits"></span></div>
+                </div>
+                <div class="panel-block">
+                    <h3>迴響號</h3>
+                    <div class="stat-row"><span class="label">狀態</span><span class="value">尚未取得</span></div>
+                    <div class="loc-sub">艦船系統將於 M2 里程碑啟用</div>
+                </div>
+            </aside>
+
+            <!-- 中欄:敘事 -->
+            <main id="narrative-wrap" aria-live="polite">
+                <div id="narrative"></div>
+                <div id="choices" role="menu"></div>
+            </main>
+
+            <!-- 右欄:任務 / 所在地 / 快捷 -->
+            <aside id="panel-right" class="hud-panel" aria-label="任務與導航">
+                <div class="panel-block">
+                    <h3>任務追蹤</h3>
+                    <div id="hud-quests"></div>
+                </div>
+                <div class="panel-block">
+                    <h3>所在地</h3>
+                    <div class="loc-name" id="hud-loc-name"></div>
+                    <div class="loc-sub" id="hud-loc-sub"></div>
+                </div>
+                <div class="panel-block">
+                    <h3>系統</h3>
+                    <div class="shortcut-grid">
+                        <button class="icon-btn" type="button" disabled>🎒 背包</button>
+                        <button class="icon-btn" type="button" disabled>👤 角色</button>
+                        <button class="icon-btn" type="button" disabled>🔬 科技</button>
+                        <button class="icon-btn" type="button" disabled>🗺 星圖</button>
+                        <button class="icon-btn" type="button" disabled>📜 日誌</button>
+                        <button class="icon-btn" type="button" disabled>⚔ 小隊</button>
+                    </div>
+                    <div class="loc-sub" style="margin-top:8px">灰色功能於 M1–M3 逐步開放</div>
+                </div>
+            </aside>
+        </div>
+    </section>
+
+    <!-- ============ 存讀檔視窗 ============ -->
+    <div id="modal-slots" class="modal-backdrop" role="dialog" aria-modal="true">
+        <div class="modal">
+            <div class="modal-head">
+                <h2 id="slots-title">存檔</h2>
+                <button class="icon-btn" type="button" data-close="modal-slots">✕ 關閉</button>
+            </div>
+            <div class="modal-body">
+                <div id="slot-list" class="slot-list"></div>
+                <div class="modal-note">
+                    存檔保存在瀏覽器 localStorage;可「匯出」為 JSON 檔備份,或在下方匯入其他裝置的存檔。<br><br>
+                    <label class="icon-btn" style="display:inline-block;cursor:pointer">
+                        ⇪ 匯入存檔檔案<input id="btn-import" type="file" accept=".json,application/json" hidden>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 設定視窗 ============ -->
+    <div id="modal-settings" class="modal-backdrop" role="dialog" aria-modal="true">
+        <div class="modal">
+            <div class="modal-head">
+                <h2>設定</h2>
+                <button class="icon-btn" type="button" data-close="modal-settings">✕ 關閉</button>
+            </div>
+            <div class="modal-body">
+                <div class="setting-row">
+                    <span>打字機文字效果</span>
+                    <span class="seg">
+                        <button class="icon-btn" type="button" data-setting="typewriter" data-value="true">開</button>
+                        <button class="icon-btn" type="button" data-setting="typewriter" data-value="false">關</button>
+                    </span>
+                </div>
+                <div class="setting-row">
+                    <span>字級</span>
+                    <span class="seg">
+                        <button class="icon-btn" type="button" data-setting="fontSize" data-value="sm">小</button>
+                        <button class="icon-btn" type="button" data-setting="fontSize" data-value="md">中</button>
+                        <button class="icon-btn" type="button" data-setting="fontSize" data-value="lg">大</button>
+                    </span>
+                </div>
+                <div class="setting-row">
+                    <span>背景動效(掃描線)</span>
+                    <span class="seg">
+                        <button class="icon-btn" type="button" data-setting="fx" data-value="true">開</button>
+                        <button class="icon-btn" type="button" data-setting="fx" data-value="false">關</button>
+                    </span>
+                </div>
+                <div class="modal-note">鍵盤操作:數字鍵 1–9 選擇選項;Esc 關閉視窗;點擊敘事區可跳過打字效果。</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-stack" aria-live="polite"></div>
+
+    <!-- 引擎(與內容無關) -->
+    <script src="js/data/strings.js"></script>
+    <script src="js/engine/state.js"></script>
+    <script src="js/engine/check.js"></script>
+    <script src="js/engine/save.js"></script>
+    <script src="js/engine/scene.js"></script>
+    <script src="js/engine/ui.js"></script>
+    <script src="js/engine/core.js"></script>
+    <!-- 內容資料 -->
+    <script src="js/data/demo.js"></script>
+</body>
+</html>

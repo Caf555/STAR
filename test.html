@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>星淵迴響 — 引擎測試頁</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext x='16' y='24' font-size='24' text-anchor='middle'%3E%F0%9F%8C%8C%3C/text%3E%3C/svg%3E">
+    <style>
+        body { font-family: 'Consolas', 'Microsoft JhengHei', monospace; background: #0f0f0f; color: #dfe3ea; padding: 24px; font-size: 14px; }
+        h1 { font-size: 18px; color: #4a9eff; margin-bottom: 16px; }
+        .ok { color: #4caf50; }
+        .ng { color: #f44336; font-weight: bold; }
+        #summary { margin-top: 16px; padding: 10px; border: 1px solid #2e3340; }
+        div { line-height: 1.7; }
+    </style>
+</head>
+<body>
+<h1>《星淵迴響》引擎斷言測試(M0)</h1>
+<div id="out"></div>
+<div id="summary"></div>
+
+<script src="js/data/strings.js"></script>
+<script src="js/engine/state.js"></script>
+<script src="js/engine/check.js"></script>
+<script src="js/engine/save.js"></script>
+<script src="js/data/demo.js"></script>
+<script>
+(function () {
+    "use strict";
+    const out = document.getElementById("out");
+    let pass = 0, fail = 0;
+
+    function t(name, cond) {
+        const div = document.createElement("div");
+        if (cond) { pass++; div.innerHTML = '<span class="ok">✔</span> ' + name; }
+        else { fail++; div.innerHTML = '<span class="ng">✘ FAIL</span> ' + name; }
+        out.appendChild(div);
+    }
+
+    /* ---------- check.js ---------- */
+    t("屬性修正:5 → 0", SE.Check.modOf(5) === 0);
+    t("屬性修正:8 → +3", SE.Check.modOf(8) === 3);
+    t("屬性修正:3 → −2", SE.Check.modOf(3) === -2);
+
+    // 骰值範圍與臨界行為(注入固定亂數)
+    const actor = { attrs: { INT: 8 }, skills: { hacking: 2 } };
+    SE.Check._rng = () => 0;            // die = 1
+    let r = SE.Check.roll({ attr: "INT", skill: "hacking", dc: 5 }, actor);
+    t("骰出 1 = 大失敗(即使總值 ≥ DC)", r.die === 1 && r.crit === "fail" && r.success === false);
+    SE.Check._rng = () => 0.9999;       // die = 20
+    r = SE.Check.roll({ attr: "INT", dc: 30 }, actor);
+    t("骰出 20 = 大成功(即使總值 < DC)", r.die === 20 && r.crit === "success" && r.success === true);
+    SE.Check._rng = () => 0.5;          // die = 11
+    r = SE.Check.roll({ attr: "INT", skill: "hacking", dc: 16 }, actor);
+    t("一般檢定:11 +3 +2 = 16 vs DC16 成功", r.total === 16 && r.success === true && r.crit === null);
+    r = SE.Check.roll({ attr: "INT", dc: 15 }, actor);
+    t("一般檢定:11 +3 = 14 vs DC15 失敗", r.total === 14 && r.success === false);
+    SE.Check._rng = Math.random;
+    let min = 99, max = -99;
+    for (let i = 0; i < 5000; i++) { const d = SE.Check.rollDie(); if (d < min) min = d; if (d > max) max = d; }
+    t("5000 次骰值皆落在 1–20 且觸及兩端", min === 1 && max === 20);
+
+    /* ---------- state.js:條件 DSL ---------- */
+    SE.State.create({ class: "hacker", origin: "scavenger" });
+    SE.State.setFlag("demo.tip", true);
+    SE.State.addItem("data_core", 2);
+    t("flag 條件(truthy)", SE.State.cond({ flag: "demo.tip" }) === true);
+    t("flag 條件(不存在為 false)", SE.State.cond({ flag: "demo.nope" }) === false);
+    t("flag 條件(指定值)", SE.State.cond({ flag: "demo.tip", val: false }) === false);
+    t("class 條件", SE.State.cond({ class: "hacker" }) && !SE.State.cond({ class: "assault" }));
+    t("origin 條件", SE.State.cond({ origin: "scavenger" }));
+    t("item 條件(數量)", SE.State.cond({ item: "data_core", qty: 2 }) && !SE.State.cond({ item: "data_core", qty: 3 }));
+    t("all 組合", SE.State.cond({ all: [{ class: "hacker" }, { flag: "demo.tip" }] }));
+    t("any 組合", SE.State.cond({ any: [{ class: "assault" }, { flag: "demo.tip" }] }));
+    t("not 組合", SE.State.cond({ not: { class: "assault" } }));
+    t("巢狀組合", SE.State.cond({ all: [{ any: [{ class: "assault" }, { origin: "scavenger" }] }, { not: { flag: "demo.nope" } }] }));
+    t("空條件 = true", SE.State.cond(undefined) && SE.State.cond(null));
+    t("erosion 條件", SE.State.cond({ erosion: { lte: 0 } }) && !SE.State.cond({ erosion: { gte: 1 } }));
+    t("attr 條件", SE.State.cond({ attr: { name: "INT", gte: 6 } }));
+
+    /* ---------- state.js:效果 DSL ---------- */
+    const credits0 = SE.State.data.credits;
+    SE.State.apply([{ credits: -20 }, { xp: 50 }, { erosion: 8 }, { item: "stim_patch", qty: 1 }, { set: "fx.done", val: "yes" }]);
+    t("效果:credits", SE.State.data.credits === credits0 - 20);
+    t("效果:xp", SE.State.data.player.xp === 50);
+    t("效果:erosion", SE.State.data.player.erosion === 8);
+    t("效果:item", SE.State.itemQty("stim_patch") === 1);
+    t("效果:set 指定值旗標", SE.State.getFlag("fx.done") === "yes");
+    SE.State.apply([{ erosion: -100 }]);
+    t("效果:erosion 下限 0", SE.State.data.player.erosion === 0);
+    SE.State.apply([{ erosion: 999 }]);
+    t("效果:erosion 上限 100", SE.State.data.player.erosion === 100);
+    SE.State.apply([{ quest: "demo_signal", op: "start" }, { quest: "demo_signal", op: "advance" }]);
+    t("效果:quest start+advance → stage 2", SE.State.data.quests.demo_signal.stage === 2);
+    const hp0 = SE.State.data.player.hp;
+    SE.State.apply([{ hp: -8 }]);
+    t("效果:hp 扣血", SE.State.data.player.hp === hp0 - 8);
+
+    /* ---------- 派生數值 ---------- */
+    t("派生:hpMax = 30 + STR×6 + Lv×4", SE.State.data.player.hpMax === 30 + SE.State.data.player.attrs.STR * 6 + 4);
+    t("派生:epMax = 20 + WIL×3", SE.State.data.player.epMax === 20 + SE.State.data.player.attrs.WIL * 3);
+
+    /* ---------- save.js ---------- */
+    SE.State.data.node = "demo_05";
+    const TESTSLOT = 4;
+    SE.Save.save(TESTSLOT);
+    const snapshot = JSON.stringify(SE.State.data);
+    SE.State.create({});                       // 蓋掉現有狀態
+    const loaded = SE.Save.load(TESTSLOT);
+    t("存檔 round-trip:node 還原", loaded && loaded.node === "demo_05");
+    t("存檔 round-trip:狀態一致", JSON.stringify(SE.State.data) === snapshot);
+    t("存檔版本號正確", loaded.version === SE.Save.VERSION);
+
+    // 版本遷移:v0 → v1
+    const legacy = { version: 0, timestamp: 1, node: "demo_01", state: { player: { attrs: { STR: 5, AGI: 5, INT: 5, WIL: 5, CHA: 5 }, level: 1 }, flags: {}, inventory: {}, quests: {}, credits: 0 } };
+    const migrated = SE.Save.migrate(JSON.parse(JSON.stringify(legacy)));
+    t("遷移 v0→v1:版本升級", migrated.version === 1);
+    t("遷移 v0→v1:補上 erosion", migrated.state.player.erosion === 0);
+    t("遷移 v0→v1:補上 playTime", migrated.playTime === 0);
+    SE.Save.remove(TESTSLOT);
+    t("刪除存檔槽", SE.Save.peek(TESTSLOT) === null);
+
+    /* ---------- 內容 lint:示範場景無斷鏈 ---------- */
+    let broken = [];
+    for (const id in SE.DATA.nodes) {
+        const n = SE.DATA.nodes[id];
+        (n.choices || []).forEach(function (c) {
+            ["goto"].forEach(k => { if (c[k] && !SE.DATA.nodes[c[k]]) broken.push(id + " → " + c[k]); });
+            if (c.check) ["success", "fail"].forEach(k => {
+                if (!SE.DATA.nodes[c.check[k]]) broken.push(id + " → check." + k + " → " + c.check[k]);
+            });
+        });
+    }
+    t("敘事節點無斷鏈(" + Object.keys(SE.DATA.nodes).length + " 節點)", broken.length === 0);
+    if (broken.length) out.insertAdjacentHTML("beforeend", '<div class="ng">' + broken.join("<br>") + "</div>");
+    t("起始節點存在", !!SE.DATA.nodes[SE.DATA.start]);
+
+    /* ---------- 摘要 ---------- */
+    const sum = document.getElementById("summary");
+    sum.innerHTML = fail === 0
+        ? '<span class="ok">全部通過:' + pass + " 項</span>"
+        : '<span class="ng">失敗 ' + fail + " 項</span> / 通過 " + pass + " 項";
+    document.title = (fail === 0 ? "✔ " : "✘ ") + document.title;
+    window.__TEST_RESULT__ = { pass: pass, fail: fail };
+})();
+</script>
+</body>
+</html>
