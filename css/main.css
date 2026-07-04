@@ -220,6 +220,130 @@ html[data-fx="on"] #starfield::after {
 .toast.warn { border-left-color: var(--accent-purple); }
 @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
 
+/* ============ 角色創建 ============ */
+#screen-create { overflow-y: auto; }
+.create-wrap { margin: auto; width: min(860px, 94vw); padding: 40px 0 60px; }
+.create-title {
+    text-align: center; font-size: 1.6em; letter-spacing: .3em;
+    color: var(--accent-blue); margin-bottom: 20px; font-weight: 600;
+}
+.create-head {
+    display: flex; justify-content: center; align-items: center; gap: 10px;
+    margin-bottom: 26px; font-size: .82em; color: var(--text-dim); letter-spacing: .1em; flex-wrap: wrap;
+}
+.create-step.on { color: var(--accent-cyan); }
+.create-step.done { color: var(--text-secondary); }
+.create-sep { color: var(--border-color); }
+
+.card-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.create-card {
+    background: var(--bg-panel); border: 1px solid var(--border-color);
+    color: var(--text-primary); font-family: inherit; font-size: 1em;
+    text-align: left; padding: 18px 16px; cursor: pointer;
+    transition: border-color .15s, background .15s, transform .1s;
+    display: flex; flex-direction: column; gap: 10px;
+}
+.create-card:hover, .create-card:focus-visible { border-color: var(--accent-blue); outline: none; transform: translateY(-2px); }
+.create-card.on {
+    border-color: var(--accent-cyan);
+    background: linear-gradient(180deg, rgba(57,208,216,.08), var(--bg-panel));
+    box-shadow: 0 0 24px rgba(57,208,216,.12);
+}
+.cc-name { color: var(--accent-orange); font-weight: 700; letter-spacing: .12em; }
+.cc-blurb { color: var(--text-secondary); font-size: .85em; line-height: 1.7; flex: 1; }
+.cc-perk { color: var(--accent-cyan); font-size: .78em; line-height: 1.8; border-top: 1px dashed var(--border-color); padding-top: 8px; }
+
+.create-nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 26px; }
+.create-nav .create-next { flex: none; margin-left: auto; width: auto; padding: 12px 34px; }
+
+.attr-alloc { display: flex; flex-direction: column; gap: 8px; }
+.alloc-remain { text-align: center; color: var(--text-secondary); font-size: .88em; margin-bottom: 8px; }
+.alloc-remain b { color: var(--accent-cyan); font-size: 1.2em; }
+.alloc-row {
+    display: grid; grid-template-columns: 170px 1fr auto; gap: 12px; align-items: center;
+    background: var(--bg-panel); border: 1px solid var(--border-color); padding: 10px 14px;
+}
+.alloc-name { letter-spacing: .05em; }
+.alloc-bonus { color: var(--accent-orange); font-size: .75em; margin-left: 6px; border: 1px solid var(--border-color); padding: 1px 6px; }
+.alloc-desc { color: var(--text-dim); font-size: .78em; }
+.alloc-ctrl { display: flex; align-items: center; gap: 10px; }
+.alloc-val { min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; color: var(--accent-cyan); font-weight: 700; }
+
+.create-summary { display: flex; flex-direction: column; gap: 16px; }
+.cs-name-label { color: var(--text-secondary); font-size: .85em; }
+.cs-name {
+    margin-top: 6px; width: 100%; background: var(--bg-panel-2); border: 1px solid var(--border-color);
+    color: var(--text-primary); font-family: inherit; font-size: 1.1em; padding: 10px 14px; letter-spacing: .1em;
+}
+.cs-name:focus { outline: none; border-color: var(--accent-blue); }
+.cs-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px;
+}
+.cs-grid > div { background: var(--bg-panel); border: 1px solid var(--border-color); padding: 8px 12px; font-size: .9em; }
+.cs-grid .label, .char-attrs .label, .char-inv .label, .char-skills .label { color: var(--text-dim); font-size: .82em; margin-right: 8px; display: inline-block; }
+
+/* ============ 戰鬥介面 ============ */
+#combat {
+    position: absolute; inset: 0; z-index: 10; display: none;
+    flex-direction: column; gap: 8px; padding: 14px clamp(12px, 4vw, 48px);
+    background: #0b0d11;
+}
+#combat.open { display: flex; }
+.cb-zone h3 { font-size: .7em; color: var(--text-dim); letter-spacing: .3em; margin-bottom: 6px; }
+.cb-cards { display: flex; gap: 10px; flex-wrap: wrap; }
+.cb-card {
+    background: var(--bg-panel); border: 1px solid var(--border-color);
+    width: 168px; padding: 8px 10px; position: relative; transition: border-color .15s, box-shadow .15s;
+}
+.cb-card.back { opacity: .82; transform: scale(.96); }
+.cb-card.active { border-color: var(--accent-cyan); box-shadow: 0 0 16px rgba(57,208,216,.2); }
+.cb-card.dead { opacity: .3; filter: grayscale(1); }
+.cb-card.targetable { border-color: var(--accent-orange); cursor: pointer; box-shadow: 0 0 14px rgba(255,152,0,.25); }
+.cb-card.targetable:hover { background: var(--bg-hover); }
+.cb-name { font-size: .85em; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cb-row-tag { color: var(--text-dim); font-size: .78em; margin-left: 6px; }
+.cb-nums { font-size: .78em; color: var(--text-secondary); font-variant-numeric: tabular-nums; margin-top: 3px; }
+.cb-ep { color: var(--accent-blue); }
+.cb-status { font-size: .78em; margin-top: 3px; letter-spacing: .1em; }
+
+#cb-log {
+    flex: 1; min-height: 60px; overflow-y: auto;
+    border: 1px solid var(--border-color); background: rgba(15,17,21,.8);
+    padding: 8px 12px; font-size: .84em; line-height: 1.75;
+}
+.cb-line.sys { color: var(--text-dim); }
+.cb-line.good { color: var(--accent-green); }
+.cb-line.bad { color: var(--accent-red); }
+.cb-line.miss { color: var(--text-secondary); font-style: italic; }
+
+#cb-actions { display: flex; gap: 8px; flex-wrap: wrap; min-height: 38px; align-items: center; }
+.cb-act { font-size: .88em; padding: 8px 14px; }
+.cb-act small { color: var(--accent-blue); }
+.cb-wait { color: var(--text-dim); font-size: .85em; letter-spacing: .1em; }
+
+#cb-result { display: none; text-align: center; padding: 10px 0 4px; }
+.cb-result-title { font-size: 1.15em; letter-spacing: .25em; margin-bottom: 10px; font-weight: 700; }
+.cb-result-title.ok { color: var(--accent-green); }
+.cb-result-title.ng { color: var(--accent-red); }
+.cb-result-lines { color: var(--text-secondary); font-size: .85em; line-height: 1.9; margin-bottom: 12px; }
+#cb-result .menu-btn { display: inline-block; width: auto; padding: 10px 40px; }
+
+/* ============ 角色面板 ============ */
+.char-h { font-size: .78em; color: var(--accent-cyan); letter-spacing: .25em; margin: 18px 0 8px; display: flex; justify-content: space-between; align-items: center; }
+.char-attrs { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.char-attr {
+    background: var(--bg-panel-2); border: 1px solid var(--border-color);
+    padding: 8px 10px; font-size: .88em; display: flex; align-items: center; gap: 8px;
+}
+.char-attr b { margin-left: auto; color: var(--accent-cyan); font-variant-numeric: tabular-nums; }
+.char-plus { padding: 2px 8px; font-size: .8em; }
+.char-skills, .char-inv { display: flex; flex-direction: column; gap: 6px; }
+.char-skill, .char-item {
+    background: var(--bg-panel-2); border: 1px solid var(--border-color);
+    padding: 8px 10px; font-size: .85em; line-height: 1.6;
+}
+.hud-member { border-top: 1px dashed var(--border-color); margin-top: 10px; padding-top: 10px; }
+
 /* ============ 對話框(存讀檔/設定) ============ */
 .modal-backdrop {
     position: fixed; inset: 0; z-index: 50; display: none;
@@ -261,6 +385,10 @@ html[data-fx="on"] #starfield::after {
 
 /* ============ RWD ============ */
 @media (max-width: 900px) {
+    .card-grid { grid-template-columns: 1fr; }
+    .alloc-row { grid-template-columns: 1fr auto; }
+    .alloc-desc { display: none; }
+    .cb-card { width: 138px; }
     .hud-grid { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
     .hud-panel { flex-direction: row; overflow-x: auto; gap: 10px; padding: 10px; }
     .hud-panel .panel-block { min-width: 180px; flex: none; }

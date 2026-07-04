@@ -36,6 +36,21 @@
             $("hud-credits").textContent = s.credits;
             $("hud-level").textContent = "Lv." + p.level;
 
+            // 夥伴列表
+            const pwrap = $("hud-party");
+            pwrap.innerHTML = "";
+            s.party.forEach(function (id) {
+                const def = SE.DATA.companions[id];
+                const rec = s.companions[id];
+                if (!def || !rec) return;
+                const div = document.createElement("div");
+                div.className = "hud-member";
+                div.innerHTML = '<div class="member-name">' + def.name + '<span class="cls">' + def.title + "</span></div>" +
+                    '<div class="bar hp"><i style="width:' + (100 * rec.hp / def.hpMax) + '%"></i></div>' +
+                    '<div class="stat-row"><span class="label">生命</span><span class="value">' + rec.hp + " / " + def.hpMax + "</span></div>";
+                pwrap.appendChild(div);
+            });
+
             const loc = (SE.DATA.locations && SE.DATA.locations[s.location]) || null;
             $("hud-loc-name").textContent = loc ? loc.name : s.location;
             $("hud-loc-sub").textContent = loc ? loc.sub : "";
@@ -139,6 +154,70 @@
             b.className = "icon-btn"; b.type = "button"; b.textContent = text;
             b.addEventListener("click", fn);
             return b;
+        },
+
+        /* ---------- 角色面板 ---------- */
+        openChar() {
+            UI.renderChar();
+            UI.openModal("modal-char");
+        },
+
+        renderChar() {
+            const s = SE.State.data;
+            if (!s) return;
+            const p = s.player;
+            const body = document.getElementById("char-body");
+            const o = SE.DATA.origins[p.origin], c = SE.DATA.classes[p.class];
+            const need = SE.State.xpNeed(p.level);
+
+            let html = '<div class="cs-grid">' +
+                '<div><span class="label">名字</span>' + p.name + "</div>" +
+                '<div><span class="label">出身</span>' + (o ? o.name : p.origin) + "</div>" +
+                '<div><span class="label">職業</span>' + (c ? c.name : p.class) + "</div>" +
+                '<div><span class="label">等級</span>Lv.' + p.level + "</div>" +
+                '<div><span class="label">經驗</span>' + p.xp + " / " + need + "</div>" +
+                '<div><span class="label">學分</span>' + s.credits + "</div>" +
+                "</div>";
+
+            html += '<h3 class="char-h">屬性' +
+                ((p.attrPoints || 0) > 0 ? '<span class="alloc-bonus">可分配點數:' + p.attrPoints + "</span>" : "") + "</h3>";
+            html += '<div class="char-attrs">';
+            ["STR", "AGI", "INT", "WIL", "CHA"].forEach(function (a) {
+                html += '<div class="char-attr"><span>' + SE.Check.ATTR_ICONS[a] + " " + SE.Check.ATTR_NAMES[a] + "</span><b>" + p.attrs[a] + "</b>" +
+                    ((p.attrPoints || 0) > 0 && p.attrs[a] < 15 ? '<button class="icon-btn char-plus" type="button" data-attr="' + a + '">＋</button>' : "") +
+                    "</div>";
+            });
+            html += "</div>";
+
+            if (c) {
+                html += '<h3 class="char-h">技能</h3><div class="char-skills">' +
+                    c.skills.map(function (id) {
+                        const sk = SE.DATA.skills[id];
+                        return '<div class="char-skill"><b>' + sk.name + "</b> <span class='label'>EP" + sk.ep + "</span><br><span class='label'>" + sk.desc + "</span></div>";
+                    }).join("") + "</div>";
+            }
+
+            html += '<h3 class="char-h">背包</h3><div class="char-inv">';
+            const keys = Object.keys(s.inventory);
+            if (!keys.length) html += '<span class="label">(空)</span>';
+            keys.forEach(function (id) {
+                const it = SE.DATA.items[id] || { name: id, desc: "" };
+                html += '<div class="char-item"><b>' + it.name + "</b> ×" + s.inventory[id] +
+                    (it.desc ? '<br><span class="label">' + it.desc + "</span>" : "") + "</div>";
+            });
+            html += "</div>";
+
+            body.innerHTML = html;
+            body.querySelectorAll(".char-plus").forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    const a = btn.getAttribute("data-attr");
+                    if ((p.attrPoints || 0) <= 0 || p.attrs[a] >= 15) return;
+                    p.attrs[a] += 1; p.attrPoints -= 1;
+                    SE.State.derive();
+                    UI.renderChar();
+                    UI.refreshHUD();
+                });
+            });
         },
 
         /* ---------- 設定 ---------- */

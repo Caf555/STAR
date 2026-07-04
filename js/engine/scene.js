@@ -158,6 +158,7 @@
                 SE.Core.goto(target, { banner: banner });
                 return;
             }
+            if (c.combat) { SE.Combat.start(c.combat); return; }
             if (c.goto) { SE.Core.goto(c.goto); return; }
             if (c.action) { SE.Core.action(c.action); return; }  // 引擎級動作(回主選單等)
         }

@@ -21,9 +21,19 @@
             <button id="btn-new" class="menu-btn" type="button">▸ 新遊戲</button>
             <button id="btn-continue" class="menu-btn" type="button" disabled>▸ 繼續(自動存檔)</button>
             <button id="btn-load" class="menu-btn" type="button">▸ 讀取存檔</button>
+            <button id="btn-demo" class="menu-btn" type="button">▸ 引擎示範場景</button>
             <button id="btn-settings" class="menu-btn" type="button">▸ 設定</button>
         </nav>
         <div id="menu-version" class="menu-version"></div>
+    </section>
+
+    <!-- ============ 角色創建 ============ -->
+    <section id="screen-create" class="screen" aria-label="角色創建">
+        <div class="create-wrap">
+            <h1 class="create-title">建立你的角色</h1>
+            <div id="create-head" class="create-head"></div>
+            <div id="create-body" class="create-body"></div>
+        </div>
     </section>
 
     <!-- ============ 遊戲畫面 ============ -->
@@ -53,6 +63,7 @@
                     <div class="stat-row"><span class="label">侵蝕</span><span class="value" id="hud-erosion"></span></div>
                     <div class="bar erosion"><i id="hud-erosion-bar"></i></div>
                     <div class="stat-row"><span class="label">學分</span><span class="value" id="hud-credits"></span></div>
+                    <div id="hud-party"></div>
                 </div>
                 <div class="panel-block">
                     <h3>迴響號</h3>
@@ -65,6 +76,15 @@
             <main id="narrative-wrap" aria-live="polite">
                 <div id="narrative"></div>
                 <div id="choices" role="menu"></div>
+
+                <!-- 戰鬥介面(覆蓋敘事區) -->
+                <div id="combat" aria-label="戰鬥">
+                    <div class="cb-zone"><h3>敵方</h3><div id="cb-enemies" class="cb-cards"></div></div>
+                    <div id="cb-log" aria-live="polite"></div>
+                    <div class="cb-zone"><h3>我方</h3><div id="cb-allies" class="cb-cards"></div></div>
+                    <div id="cb-actions"></div>
+                    <div id="cb-result"></div>
+                </div>
             </main>
 
             <!-- 右欄:任務 / 所在地 / 快捷 -->
@@ -81,14 +101,12 @@
                 <div class="panel-block">
                     <h3>系統</h3>
                     <div class="shortcut-grid">
-                        <button class="icon-btn" type="button" disabled>🎒 背包</button>
-                        <button class="icon-btn" type="button" disabled>👤 角色</button>
+                        <button class="icon-btn" type="button" id="btn-char">👤 角色/背包</button>
                         <button class="icon-btn" type="button" disabled>🔬 科技</button>
                         <button class="icon-btn" type="button" disabled>🗺 星圖</button>
                         <button class="icon-btn" type="button" disabled>📜 日誌</button>
-                        <button class="icon-btn" type="button" disabled>⚔ 小隊</button>
                     </div>
-                    <div class="loc-sub" style="margin-top:8px">灰色功能於 M1–M3 逐步開放</div>
+                    <div class="loc-sub" style="margin-top:8px">灰色功能於 M2–M3 逐步開放</div>
                 </div>
             </aside>
         </div>
@@ -148,6 +166,17 @@
         </div>
     </div>
 
+    <!-- ============ 角色面板 ============ -->
+    <div id="modal-char" class="modal-backdrop" role="dialog" aria-modal="true">
+        <div class="modal">
+            <div class="modal-head">
+                <h2>角色</h2>
+                <button class="icon-btn" type="button" data-close="modal-char">✕ 關閉</button>
+            </div>
+            <div class="modal-body" id="char-body"></div>
+        </div>
+    </div>
+
     <div id="toast-stack" aria-live="polite"></div>
 
     <!-- 引擎(與內容無關) -->
@@ -156,9 +185,16 @@
     <script src="js/engine/check.js"></script>
     <script src="js/engine/save.js"></script>
     <script src="js/engine/scene.js"></script>
+    <script src="js/engine/combat.js"></script>
+    <script src="js/engine/create.js"></script>
     <script src="js/engine/ui.js"></script>
     <script src="js/engine/core.js"></script>
     <!-- 內容資料 -->
+    <script src="js/data/origins.js"></script>
+    <script src="js/data/items.js"></script>
+    <script src="js/data/enemies.js"></script>
+    <script src="js/data/companions.js"></script>
+    <script src="js/data/prologue.js"></script>
     <script src="js/data/demo.js"></script>
 </body>
 </html>

@@ -18,12 +18,7 @@
         siren_k77_depot: { name: "K-77 舊貨棧", sub: "賽壬星系・曙光港外圍" }
     });
 
-    /* ---------- 道具 ---------- */
-    Object.assign(D.items = D.items || {}, {
-        weaver_fragment: { name: "織界者碎片", type: "key", desc: "溫熱的黑色晶體,內部有光在移動,像一句沒說完的話。" },
-        data_core: { name: "資料核心", type: "material", desc: "可用於科技研究的加密資料結晶。" },
-        stim_patch: { name: "急救貼片", type: "consumable", desc: "戰地用凝膠貼片,恢復少量生命值。" }
-    });
+    /* 道具定義統一在 items.js(此處不得覆蓋,避免丟失欄位) */
 
     /* ---------- 任務 ---------- */
     Object.assign(D.quests = D.quests || {}, {

@@ -71,6 +71,9 @@
             return o;
         },
 
+        /** 升級所需經驗 */
+        xpNeed(level) { return level * 100; },
+
         /* ---------- 背包 ---------- */
         addItem(id, qty) {
             qty = qty == null ? 1 : qty;
@@ -160,7 +163,27 @@
                     msgs.push((e.credits > 0 ? "+" : "") + e.credits + " " + (T.credits || "學分"));
                     continue;
                 }
-                if ("xp" in e) { p.xp += e.xp; msgs.push("+" + e.xp + " " + (T.xp || "經驗")); continue; }
+                if ("xp" in e) {
+                    p.xp += e.xp;
+                    msgs.push("+" + e.xp + " " + (T.xp || "經驗"));
+                    while (p.xp >= State.xpNeed(p.level)) {
+                        p.xp -= State.xpNeed(p.level);
+                        p.level += 1;
+                        p.attrPoints = (p.attrPoints || 0) + 1;
+                        if (p.level % 2 === 0) p.skillPoints = (p.skillPoints || 0) + 1;
+                        State.derive();
+                        p.hp = p.hpMax; p.ep = p.epMax;
+                        msgs.push((T.levelUp || "升級!Lv.") + p.level);
+                    }
+                    continue;
+                }
+                if ("party" in e) {
+                    const def = SE.DATA.companions[e.party];
+                    if (!s.companions[e.party]) s.companions[e.party] = { affinity: 0, hp: def.hpMax, ep: def.epMax };
+                    if (s.party.indexOf(e.party) === -1) s.party.push(e.party);
+                    msgs.push((def ? def.name : e.party) + " " + (T.joined || "加入了小隊"));
+                    continue;
+                }
                 if ("erosion" in e) {
                     p.erosion = Math.max(0, Math.min(100, p.erosion + e.erosion));
                     if (e.erosion > 0) msgs.push((T.erosionUp || "侵蝕 +") + e.erosion);

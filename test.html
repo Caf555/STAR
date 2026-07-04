@@ -18,10 +18,18 @@
 <div id="out"></div>
 <div id="summary"></div>
 
+<div id="cb-log" style="display:none"></div>
+
 <script src="js/data/strings.js"></script>
 <script src="js/engine/state.js"></script>
 <script src="js/engine/check.js"></script>
 <script src="js/engine/save.js"></script>
+<script src="js/engine/combat.js"></script>
+<script src="js/data/origins.js"></script>
+<script src="js/data/items.js"></script>
+<script src="js/data/enemies.js"></script>
+<script src="js/data/companions.js"></script>
+<script src="js/data/prologue.js"></script>
 <script src="js/data/demo.js"></script>
 <script>
 (function () {
@@ -119,6 +127,48 @@
     SE.Save.remove(TESTSLOT);
     t("刪除存檔槽", SE.Save.peek(TESTSLOT) === null);
 
+    /* ---------- 升級與夥伴(M1) ---------- */
+    SE.State.create({ class: "assault", origin: "officer" });
+    SE.State.apply([{ xp: 250 }]);   // 需求:Lv1→2 要 100、Lv2→3 要 200
+    t("升級:250 經驗 → Lv.2(餘 150)", SE.State.data.player.level === 2 && SE.State.data.player.xp === 150);
+    t("升級:獲得屬性點與技能點", SE.State.data.player.attrPoints === 1 && SE.State.data.player.skillPoints === 1);
+    t("升級:生命回滿且上限隨等級成長", SE.State.data.player.hp === SE.State.data.player.hpMax);
+    SE.State.apply([{ party: "kaila" }]);
+    t("夥伴入隊:party 與 companions 記錄", SE.State.data.party.indexOf("kaila") !== -1 && SE.State.data.companions.kaila.hp === SE.DATA.companions.kaila.hpMax);
+    t("夥伴條件:companion 在隊", SE.State.cond({ companion: "kaila" }));
+
+    /* ---------- 戰鬥機制(M1,無 DOM 部分) ---------- */
+    const A = { agi: 6, statuses: [] }, B = { agi: 6, statuses: [], row: "front", side: "enemy" };
+    t("命中率:同反應 = 85%", SE.Combat.hitChance(A, B, 0) === 85);
+    t("命中率:上下限 50–98", SE.Combat.hitChance({ agi: 30, statuses: [] }, B, 50) === 98 &&
+        SE.Combat.hitChance({ agi: 0, statuses: [], }, { agi: 30, statuses: [] }, -50) === 50);
+    t("命中率:壓制 −15", SE.Combat.hitChance({ agi: 6, statuses: [{ id: "suppress", turns: 1 }] }, B, 0) === 70);
+
+    const dummy = { name: "測試靶", hp: 100, hpMax: 100, statuses: [], defending: false, side: "enemy", def: { resist: { kin: 0.5, en: 1, psi: 1.5 } } };
+    let d = SE.Combat.dealDamage({ }, dummy, { base: [10, 10], dtype: "psi" });
+    t("傷害:弱點 1.5 倍", d === 15 && dummy.hp === 85);
+    d = SE.Combat.dealDamage({}, dummy, { base: [10, 10], dtype: "kin" });
+    t("傷害:抗性 0.5 倍", d === 5 && dummy.hp === 80);
+    dummy.defending = true;
+    d = SE.Combat.dealDamage({}, dummy, { base: [10, 10], dtype: "en" });
+    t("傷害:防禦減半", d === 5 && dummy.hp === 75);
+    dummy.defending = false;
+    SE.Combat.applyStatus(dummy, { id: "shield", value: 8 });
+    d = SE.Combat.dealDamage({}, dummy, { base: [10, 10], dtype: "en" });
+    t("傷害:護盾吸收 8 後穿透 2", d === 2 && dummy.hp === 73 && !dummy.statuses.some(s => s.id === "shield"));
+
+    // 近戰射程:前排可及、後排不可及(除非前排全滅)
+    SE.Combat.cur = { actors: [
+        { side: "enemy", row: "front", hp: 10 },
+        { side: "enemy", row: "back", hp: 10, name: "後排" }
+    ] };
+    const backTarget = SE.Combat.cur.actors[1];
+    t("近戰:前排存活時打不到後排", SE.Combat.canReach({}, backTarget, "melee") === false);
+    SE.Combat.cur.actors[0].hp = 0;
+    t("近戰:前排全滅後可打後排", SE.Combat.canReach({}, backTarget, "melee") === true);
+    t("遠程:永遠可及", SE.Combat.canReach({}, backTarget, "ranged") === true);
+    SE.Combat.cur = null;
+
     /* ---------- 內容 lint:示範場景無斷鏈 ---------- */
     let broken = [];
     for (const id in SE.DATA.nodes) {
@@ -128,11 +178,44 @@
             if (c.check) ["success", "fail"].forEach(k => {
                 if (!SE.DATA.nodes[c.check[k]]) broken.push(id + " → check." + k + " → " + c.check[k]);
             });
+            if (c.combat && !SE.DATA.encounters[c.combat]) broken.push(id + " → combat → " + c.combat);
         });
+        if (n.location && !SE.DATA.locations[n.location]) broken.push(id + " → location → " + n.location);
     }
     t("敘事節點無斷鏈(" + Object.keys(SE.DATA.nodes).length + " 節點)", broken.length === 0);
     if (broken.length) out.insertAdjacentHTML("beforeend", '<div class="ng">' + broken.join("<br>") + "</div>");
     t("起始節點存在", !!SE.DATA.nodes[SE.DATA.start]);
+
+    // 遭遇表:victory/defeat 節點、敵人、客串引用皆存在
+    let encBroken = [];
+    for (const eid in SE.DATA.encounters) {
+        const e = SE.DATA.encounters[eid];
+        if (!SE.DATA.nodes[e.victory]) encBroken.push(eid + " victory→" + e.victory);
+        if (e.defeat && !SE.DATA.nodes[e.defeat]) encBroken.push(eid + " defeat→" + e.defeat);
+        (e.enemies || []).forEach(x => { if (!SE.DATA.enemies[x.id]) encBroken.push(eid + " enemy→" + x.id); });
+        (e.guests || []).forEach(g => { if (!SE.DATA.guests[g]) encBroken.push(eid + " guest→" + g); });
+    }
+    t("遭遇表引用完整(" + Object.keys(SE.DATA.encounters).length + " 場)", encBroken.length === 0);
+    if (encBroken.length) out.insertAdjacentHTML("beforeend", '<div class="ng">' + encBroken.join("<br>") + "</div>");
+
+    // 出身/職業引用:起點節點、武器、技能皆存在
+    let refBroken = [];
+    for (const oid in SE.DATA.origins) {
+        if (!SE.DATA.nodes[SE.DATA.origins[oid].start]) refBroken.push("origin " + oid + " start");
+    }
+    for (const cid in SE.DATA.classes) {
+        const c = SE.DATA.classes[cid];
+        if (!SE.DATA.items[c.weapon]) refBroken.push("class " + cid + " weapon");
+        c.skills.forEach(s => { if (!SE.DATA.skills[s]) refBroken.push("class " + cid + " skill " + s); });
+    }
+    for (const kid in SE.DATA.companions) {
+        const k = SE.DATA.companions[kid];
+        if (!SE.DATA.items[k.weapon]) refBroken.push("companion " + kid + " weapon");
+        (k.skills || []).forEach(s => { if (!SE.DATA.skills[s]) refBroken.push("companion " + kid + " skill " + s); });
+    }
+    t("出身/職業/夥伴引用完整", refBroken.length === 0);
+    t("道具定義未被後載資料檔覆蓋(急救貼片保有戰鬥欄位)", !!(SE.DATA.items.stim_patch && SE.DATA.items.stim_patch.combat));
+    if (refBroken.length) out.insertAdjacentHTML("beforeend", '<div class="ng">' + refBroken.join("<br>") + "</div>");
 
     /* ---------- 摘要 ---------- */
     const sum = document.getElementById("summary");

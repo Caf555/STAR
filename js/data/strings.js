@@ -7,7 +7,7 @@
     SE.DATA = SE.DATA || {};
 
     SE.DATA.strings = {
-        engineTag: "M0 引擎骨架",
+        engineTag: "M1 創角與序章",
         demoChapter: "示範場景〈曙光港的訊號〉",
         noQuest: "(目前沒有追蹤中的任務)",
 
@@ -38,7 +38,9 @@
             xp: "經驗",
             erosionUp: "侵蝕 +",
             erosionDown: "侵蝕 ",
-            affinity: "好感"
+            affinity: "好感",
+            levelUp: "升級!Lv.",
+            joined: "加入了小隊"
         }
     };
 })();

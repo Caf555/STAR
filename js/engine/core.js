@@ -5,7 +5,7 @@
 (function () {
     "use strict";
     window.SE = window.SE || {};
-    SE.VERSION = "0.1.0-M0";
+    SE.VERSION = "0.2.0-M1";
     SE.DATA = SE.DATA || {};
     SE.DATA.nodes = SE.DATA.nodes || {};
     SE.DATA.strings = SE.DATA.strings || {};
@@ -41,9 +41,15 @@
         },
 
         newGame() {
-            SE.State.create({});           // M0:預設示範角色;M1 起改為創角流程
+            SE.Create.begin();             // 進入角色創建流程
+        },
+
+        /** M0 引擎示範場景(預設角色) */
+        startDemo() {
+            SE.State.create({ name: "旅人" });
+            SE.State.apply([{ item: "pistol_em", qty: 1 }]);
             SE.UI.showScreen("game");
-            Core.goto(SE.DATA.start);
+            Core.goto("demo_01");
         },
 
         loadGame(slot) {
@@ -65,6 +71,8 @@
             SE.UI.bindKeyboard();
 
             document.getElementById("btn-new").addEventListener("click", () => Core.newGame());
+            document.getElementById("btn-demo").addEventListener("click", () => Core.startDemo());
+            document.getElementById("btn-char").addEventListener("click", () => SE.UI.openChar());
             document.getElementById("btn-continue").addEventListener("click", () => Core.loadGame("auto"));
             document.getElementById("btn-load").addEventListener("click", () => SE.UI.openSlots("load"));
             document.getElementById("btn-settings").addEventListener("click", () => SE.UI.openModal("modal-settings"));
