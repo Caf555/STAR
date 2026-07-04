@@ -8,7 +8,7 @@
 
     const PREFIX = "se_save_";
     const SLOTS = 5;
-    const VERSION = 1;
+    const VERSION = 2;
 
     /* 版本遷移鏈:migrations[n] 將版本 n 的存檔升級為 n+1 */
     const migrations = {
@@ -17,6 +17,14 @@
             if (save.state && save.state.player && save.state.player.erosion == null) save.state.player.erosion = 0;
             if (save.playTime == null) save.playTime = 0;
             save.version = 1;
+            return save;
+        },
+        1: function (save) {
+            // v1(M1)→ v2(M2):補上迴響號的艦船狀態
+            if (save.state && !save.state.ship) {
+                save.state.ship = { fuel: 6, fuelMax: 10, hull: 30, hullMax: 30, system: "siren" };
+            }
+            save.version = 2;
             return save;
         }
     };

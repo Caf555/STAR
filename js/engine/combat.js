@@ -457,8 +457,15 @@
         },
 
         _npcAllyAct(a) {
-            const sk = (a.skills || []).map(id => SE.DATA.skills[id]).find(s => s && a.ep >= s.ep && s.shield);
-            // 有護盾技且玩家血低 → 給玩家上盾,否則攻擊
+            const usable = (a.skills || []).map(id => SE.DATA.skills[id]).filter(s => s && a.ep >= s.ep);
+            // 治療技:優先救血量最低且低於 55% 的隊友
+            const healSk = usable.find(s => s.heal);
+            if (healSk) {
+                const hurt = Combat.alive("ally").filter(t => t.hp / t.hpMax < 0.55).sort((x, y) => x.hp / x.hpMax - y.hp / y.hpMax)[0];
+                if (hurt) { Combat.doSkill(a, healSk.id, hurt); return; }
+            }
+            // 護盾技:玩家血低且無盾 → 上盾
+            const sk = usable.find(s => s.shield);
             const player = Combat.cur.actors.find(x => x.ref === "player");
             if (sk && player && player.hp / player.hpMax < 0.5 && !player.statuses.some(s => s.id === "shield")) {
                 Combat.doSkill(a, sk.id, player);

@@ -67,8 +67,7 @@
                 </div>
                 <div class="panel-block">
                     <h3>迴響號</h3>
-                    <div class="stat-row"><span class="label">狀態</span><span class="value">尚未取得</span></div>
-                    <div class="loc-sub">艦船系統將於 M2 里程碑啟用</div>
+                    <div id="hud-ship"></div>
                 </div>
             </aside>
 
@@ -102,11 +101,11 @@
                     <h3>系統</h3>
                     <div class="shortcut-grid">
                         <button class="icon-btn" type="button" id="btn-char">👤 角色/背包</button>
+                        <button class="icon-btn" type="button" id="btn-map">🗺 星圖</button>
                         <button class="icon-btn" type="button" disabled>🔬 科技</button>
-                        <button class="icon-btn" type="button" disabled>🗺 星圖</button>
                         <button class="icon-btn" type="button" disabled>📜 日誌</button>
                     </div>
-                    <div class="loc-sub" style="margin-top:8px">灰色功能於 M2–M3 逐步開放</div>
+                    <div class="loc-sub" style="margin-top:8px">灰色功能於 M3 開放</div>
                 </div>
             </aside>
         </div>
@@ -166,6 +165,40 @@
         </div>
     </div>
 
+    <!-- ============ 星圖 ============ -->
+    <div id="modal-starmap" class="modal-backdrop" role="dialog" aria-modal="true">
+        <div class="modal modal-wide">
+            <div class="modal-head">
+                <h2>幽弦星區・星圖</h2>
+                <button class="icon-btn" type="button" data-close="modal-starmap">✕ 關閉</button>
+            </div>
+            <div class="modal-body">
+                <svg id="starmap-svg" viewBox="0 0 660 440" role="img" aria-label="星區地圖"></svg>
+                <div id="starmap-fuel" class="modal-note"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 商店 ============ -->
+    <div id="modal-shop" class="modal-backdrop" role="dialog" aria-modal="true">
+        <div class="modal">
+            <div class="modal-head">
+                <h2 id="shop-title">商店</h2>
+                <button class="icon-btn" type="button" data-close="modal-shop">✕ 關閉</button>
+            </div>
+            <div class="modal-body">
+                <div class="shop-bar">
+                    <span class="seg">
+                        <button class="icon-btn" type="button" id="shop-tab-buy">購買</button>
+                        <button class="icon-btn" type="button" id="shop-tab-sell">出售</button>
+                    </span>
+                    <span id="shop-credits" class="shop-credits"></span>
+                </div>
+                <div id="shop-list" class="slot-list"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- ============ 角色面板 ============ -->
     <div id="modal-char" class="modal-backdrop" role="dialog" aria-modal="true">
         <div class="modal">
@@ -187,14 +220,18 @@
     <script src="js/engine/scene.js"></script>
     <script src="js/engine/combat.js"></script>
     <script src="js/engine/create.js"></script>
+    <script src="js/engine/starmap.js"></script>
+    <script src="js/engine/shop.js"></script>
     <script src="js/engine/ui.js"></script>
     <script src="js/engine/core.js"></script>
     <!-- 內容資料 -->
+    <script src="js/data/world.js"></script>
     <script src="js/data/origins.js"></script>
     <script src="js/data/items.js"></script>
     <script src="js/data/enemies.js"></script>
     <script src="js/data/companions.js"></script>
     <script src="js/data/prologue.js"></script>
+    <script src="js/data/chapter1.js"></script>
     <script src="js/data/demo.js"></script>
 </body>
 </html>

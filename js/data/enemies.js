@@ -42,6 +42,20 @@
             hp: 24, agi: 6, atk: [5, 8], dtype: "psi", range: "melee",
             resist: { kin: 1, en: 1, psi: 0.5 },
             xp: 25, credits: 15
+        },
+        rift_spawn: {
+            name: "裂隙幼體", family: "rift",
+            hp: 22, agi: 8, atk: [4, 7], dtype: "psi", range: "melee",
+            resist: { kin: 0.75, en: 0.75, psi: 1.5 },
+            xp: 30, credits: 0
+        },
+        rift_maw: {
+            name: "裂隙撕裂者", family: "rift",
+            hp: 72, agi: 6, atk: [8, 12], dtype: "psi", range: "melee",
+            resist: { kin: 0.75, en: 0.75, psi: 1.5 },
+            skills: [{ name: "錯頻嘶鳴", dmg: [4, 6], dtype: "psi", status: { id: "suppress", turns: 2 } }],
+            xp: 90, credits: 0,
+            loot: [{ item: "data_core", qty: 1, chance: 1 }]
         }
     });
 })();

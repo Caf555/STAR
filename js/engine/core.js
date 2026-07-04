@@ -5,7 +5,7 @@
 (function () {
     "use strict";
     window.SE = window.SE || {};
-    SE.VERSION = "0.2.0-M1";
+    SE.VERSION = "0.3.0-M2";
     SE.DATA = SE.DATA || {};
     SE.DATA.nodes = SE.DATA.nodes || {};
     SE.DATA.strings = SE.DATA.strings || {};
@@ -34,6 +34,9 @@
                     break;
                 case "newGame":
                     Core.newGame();
+                    break;
+                case "starmap":
+                    SE.Starmap.open();
                     break;
                 default:
                     console.warn("未知動作:", name);
@@ -73,6 +76,9 @@
             document.getElementById("btn-new").addEventListener("click", () => Core.newGame());
             document.getElementById("btn-demo").addEventListener("click", () => Core.startDemo());
             document.getElementById("btn-char").addEventListener("click", () => SE.UI.openChar());
+            document.getElementById("btn-map").addEventListener("click", () => { if (SE.State.data) SE.Starmap.open(); });
+            document.getElementById("shop-tab-buy").addEventListener("click", () => { SE.Shop._tab = "buy"; SE.Shop.render(); });
+            document.getElementById("shop-tab-sell").addEventListener("click", () => { SE.Shop._tab = "sell"; SE.Shop.render(); });
             document.getElementById("btn-continue").addEventListener("click", () => Core.loadGame("auto"));
             document.getElementById("btn-load").addEventListener("click", () => SE.UI.openSlots("load"));
             document.getElementById("btn-settings").addEventListener("click", () => SE.UI.openModal("modal-settings"));

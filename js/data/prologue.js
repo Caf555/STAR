@@ -446,10 +446,10 @@
     };
     nodes.pro_common_14 = {
         location: "echo_ship", chapterLabel: COM,
-        text: "感謝遊玩《星淵迴響》序章(M1 里程碑)。\n\n本階段內容:角色創建(3 出身 × 3 職業)、三段出身專屬序章、回合制小隊戰鬥、夥伴凱菈入隊。\n\n接下來的 M2 里程碑:星圖導航、迴響號航行與燃料、燈塔站樞紐,以及第一章〈墜落的信標〉。",
+        text: "—— 序章完 ——\n\n迴響號是你的了。星圖上,賈維留下的最後一條線索指向燈塔站;而掌心的碎片,還藏著沒有說完的話。",
         choices: [
-            { text: "建立新角色,體驗另一種出身", action: "newGame" },
-            { text: "回到主選單", action: "mainMenu" }
+            { text: "▸ 第一章〈墜落的信標〉", goto: "ch1_01" },
+            { text: "回到主選單(進度已自動存檔)", action: "mainMenu" }
         ]
     };
 

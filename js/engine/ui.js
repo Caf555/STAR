@@ -55,6 +55,21 @@
             $("hud-loc-name").textContent = loc ? loc.name : s.location;
             $("hud-loc-sub").textContent = loc ? loc.sub : "";
 
+            // 迴響號面板(取得艦船後啟用)
+            const shipEl = $("hud-ship");
+            if (SE.State.getFlag("pro.finished")) {
+                const sys = SE.DATA.systems && SE.DATA.systems[s.ship.system];
+                shipEl.innerHTML =
+                    '<div class="stat-row"><span class="label">所在星系</span><span class="value">' + (sys ? sys.name : s.ship.system) + "</span></div>" +
+                    '<div class="stat-row"><span class="label">船體</span><span class="value">' + s.ship.hull + " / " + s.ship.hullMax + "</span></div>" +
+                    '<div class="bar hull"><i style="width:' + (100 * s.ship.hull / s.ship.hullMax) + '%"></i></div>' +
+                    '<div class="stat-row"><span class="label">燃料</span><span class="value">' + s.ship.fuel + " / " + s.ship.fuelMax + "</span></div>" +
+                    '<div class="bar fuel"><i style="width:' + (100 * s.ship.fuel / s.ship.fuelMax) + '%"></i></div>';
+            } else {
+                shipEl.innerHTML = '<div class="stat-row"><span class="label">狀態</span><span class="value">尚未取得</span></div>' +
+                    '<div class="loc-sub">在序章結尾取得迴響號</div>';
+            }
+
             const node = s.node && SE.DATA.nodes[s.node];
             $("hud-chapter").textContent = (node && node.chapterLabel) || SE.DATA.strings.demoChapter || "";
 

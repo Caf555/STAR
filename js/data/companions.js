@@ -15,7 +15,17 @@
             weapon: "pistol_service",
             skills: ["guard_wall"],
             row: "front",
-            shipPassive: "艦上待命:戰術簡報(全隊命中 +2%,M2 啟用)"
+            shipPassive: "艦上待命:戰術簡報(全隊命中 +2%,M3 啟用)"
+        },
+        rivet: {
+            name: "鉚釘 RIVET",
+            title: "古董工程機器人",
+            hpMax: 55, epMax: 35,
+            attrs: { STR: 6, AGI: 5, INT: 9, WIL: 7, CHA: 4 },
+            weapon: "welding_arm",
+            skills: ["nano_heal", "overload"],
+            row: "back",
+            shipPassive: "艦上待命:自動保養(製造品質加成,M3 啟用)"
         }
     });
 

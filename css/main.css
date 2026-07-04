@@ -328,6 +328,36 @@ html[data-fx="on"] #starfield::after {
 .cb-result-lines { color: var(--text-secondary); font-size: .85em; line-height: 1.9; margin-bottom: 12px; }
 #cb-result .menu-btn { display: inline-block; width: auto; padding: 10px 40px; }
 
+/* ============ 星圖 ============ */
+.modal-wide { width: min(760px, 94vw); }
+#starmap-svg {
+    width: 100%; height: auto; display: block;
+    background:
+        radial-gradient(1px 1px at 15% 25%, rgba(255,255,255,.4), transparent 40%),
+        radial-gradient(1px 1px at 70% 60%, rgba(255,255,255,.3), transparent 40%),
+        radial-gradient(1.5px 1.5px at 45% 80%, rgba(160,200,255,.4), transparent 40%),
+        radial-gradient(1px 1px at 85% 20%, rgba(255,255,255,.35), transparent 40%),
+        #0a0c10;
+    border: 1px solid var(--border-color);
+}
+.sm-lane { stroke: #2a3040; stroke-width: 1.5; stroke-dasharray: 4 4; }
+.sm-lane.active { stroke: var(--accent-blue); stroke-dasharray: none; opacity: .7; }
+.sm-node circle { fill: #1c2230; stroke: var(--text-dim); stroke-width: 1.5; }
+.sm-node text { fill: var(--text-secondary); font-size: 13px; text-anchor: middle; letter-spacing: .1em; }
+.sm-node .sm-sub { font-size: 10px; fill: var(--text-dim); }
+.sm-node.current circle { fill: rgba(74,158,255,.25); stroke: var(--accent-blue); stroke-width: 2.5; }
+.sm-node.current text { fill: var(--accent-blue); }
+.sm-node.locked circle { stroke: #3a3020; fill: #14120c; }
+.sm-node.locked text { fill: #6a5f45; }
+.sm-node.reachable circle { stroke: var(--accent-cyan); stroke-width: 2; fill: rgba(57,208,216,.15); }
+.sm-node.reachable text { fill: var(--accent-cyan); }
+.sm-node.reachable:hover circle { fill: rgba(57,208,216,.35); }
+
+/* ============ 商店 ============ */
+.shop-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.shop-credits { color: var(--accent-orange); font-variant-numeric: tabular-nums; font-size: .9em; }
+.shop-price { color: var(--accent-orange); font-variant-numeric: tabular-nums; min-width: 4ch; text-align: right; }
+
 /* ============ 角色面板 ============ */
 .char-h { font-size: .78em; color: var(--accent-cyan); letter-spacing: .25em; margin: 18px 0 8px; display: flex; justify-content: space-between; align-items: center; }
 .char-attrs { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }

@@ -31,6 +31,7 @@
                 flags: {},            // 巢狀旗標樹
                 quests: {},           // questId -> { stage, done }
                 chapter: 0,
+                ship: { fuel: 6, fuelMax: 10, hull: 30, hullMax: 30, system: "siren" },
                 location: opts.location || "siren_dawnport",
                 node: null,           // 目前敘事節點 id
                 playTime: 0           // 秒
@@ -131,6 +132,14 @@
             }
             if ("chapter" in c) return s.chapter >= (c.chapter.gte || 0);
             if ("credits" in c) return s.credits >= (c.credits.gte || 0);
+            if ("quest" in c) {
+                const q = s.quests[c.quest.id];
+                if (!q) return false;
+                if ("done" in c.quest && q.done !== c.quest.done) return false;
+                if ("gte" in c.quest && q.stage < c.quest.gte) return false;
+                if ("lte" in c.quest && q.stage > c.quest.lte) return false;
+                return true;
+            }
             return true;
         },
 
@@ -200,6 +209,27 @@
                 }
                 if ("location" in e) { s.location = e.location; continue; }
                 if ("chapter" in e) { s.chapter = e.chapter; continue; }
+                if ("fuel" in e) {
+                    s.ship.fuel = Math.max(0, Math.min(s.ship.fuelMax, s.ship.fuel + e.fuel));
+                    continue;
+                }
+                if ("hull" in e) {
+                    s.ship.hull = Math.max(0, Math.min(s.ship.hullMax, s.ship.hull + e.hull));
+                    continue;
+                }
+                if ("system" in e) { s.ship.system = e.system; continue; }
+                if ("refuel" in e) {
+                    // 補滿燃料,每格價格 = e.refuel;學分不足則能補幾格補幾格
+                    const per = e.refuel || 10;
+                    const want = s.ship.fuelMax - s.ship.fuel;
+                    const can = Math.min(want, Math.floor(s.credits / per));
+                    if (want <= 0) { msgs.push(T.fuelFull || "燃料已滿"); continue; }
+                    if (can <= 0) { msgs.push(T.noCredits || "學分不足"); continue; }
+                    s.credits -= can * per;
+                    s.ship.fuel += can;
+                    msgs.push((T.refueled || "燃料 +") + can + "(−" + (can * per) + " " + (T.credits || "學分") + ")");
+                    continue;
+                }
                 if ("quest" in e) {
                     const q = s.quests[e.quest] || (s.quests[e.quest] = { stage: 0, done: false });
                     if (e.op === "start") q.stage = Math.max(q.stage, 1);

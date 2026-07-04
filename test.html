@@ -25,11 +25,14 @@
 <script src="js/engine/check.js"></script>
 <script src="js/engine/save.js"></script>
 <script src="js/engine/combat.js"></script>
+<script src="js/engine/shop.js"></script>
+<script src="js/data/world.js"></script>
 <script src="js/data/origins.js"></script>
 <script src="js/data/items.js"></script>
 <script src="js/data/enemies.js"></script>
 <script src="js/data/companions.js"></script>
 <script src="js/data/prologue.js"></script>
+<script src="js/data/chapter1.js"></script>
 <script src="js/data/demo.js"></script>
 <script>
 (function () {
@@ -121,9 +124,9 @@
     // 版本遷移:v0 → v1
     const legacy = { version: 0, timestamp: 1, node: "demo_01", state: { player: { attrs: { STR: 5, AGI: 5, INT: 5, WIL: 5, CHA: 5 }, level: 1 }, flags: {}, inventory: {}, quests: {}, credits: 0 } };
     const migrated = SE.Save.migrate(JSON.parse(JSON.stringify(legacy)));
-    t("遷移 v0→v1:版本升級", migrated.version === 1);
-    t("遷移 v0→v1:補上 erosion", migrated.state.player.erosion === 0);
-    t("遷移 v0→v1:補上 playTime", migrated.playTime === 0);
+    t("遷移 v0→最新:版本鏈升級到 " + SE.Save.VERSION, migrated.version === SE.Save.VERSION);
+    t("遷移 v0:補上 erosion 與 playTime", migrated.state.player.erosion === 0 && migrated.playTime === 0);
+    t("遷移 v0:一路補齊 v2 的艦船欄位", !!migrated.state.ship);
     SE.Save.remove(TESTSLOT);
     t("刪除存檔槽", SE.Save.peek(TESTSLOT) === null);
 
@@ -168,6 +171,57 @@
     t("近戰:前排全滅後可打後排", SE.Combat.canReach({}, backTarget, "melee") === true);
     t("遠程:永遠可及", SE.Combat.canReach({}, backTarget, "ranged") === true);
     SE.Combat.cur = null;
+
+    /* ---------- M2:艦船、燃料、任務條件、商店 ---------- */
+    SE.State.create({ class: "hacker", origin: "scavenger" });
+    t("初始艦船狀態(燃料 6/10,賽壬)", SE.State.data.ship.fuel === 6 && SE.State.data.ship.system === "siren");
+    SE.State.apply([{ fuel: -2 }, { system: "helios" }]);
+    t("效果:fuel/system", SE.State.data.ship.fuel === 4 && SE.State.data.ship.system === "helios");
+    SE.State.apply([{ fuel: 99 }]);
+    t("效果:燃料上限截斷", SE.State.data.ship.fuel === 10);
+    SE.State.data.ship.fuel = 5; SE.State.data.credits = 35;
+    SE.State.apply([{ refuel: 10 }]);
+    t("效果:refuel 依學分能買幾格補幾格(35 學分 → 3 格)", SE.State.data.ship.fuel === 8 && SE.State.data.credits === 5);
+    SE.State.apply([{ refuel: 10 }]);
+    t("效果:refuel 學分不足時不動作", SE.State.data.ship.fuel === 8 && SE.State.data.credits === 5);
+
+    SE.State.apply([{ quest: "q_ch1", op: "start" }, { quest: "q_ch1", op: "advance" }]);
+    t("任務條件:gte/lte", SE.State.cond({ quest: { id: "q_ch1", gte: 2, lte: 2 } }) &&
+        !SE.State.cond({ quest: { id: "q_ch1", gte: 3 } }));
+    t("任務條件:done", SE.State.cond({ quest: { id: "q_ch1", done: false } }) &&
+        !SE.State.cond({ quest: { id: "q_ch1", done: true } }));
+    t("任務條件:未開始 = false", !SE.State.cond({ quest: { id: "q_nope", gte: 0 } }));
+
+    SE.State.data.player.attrs.CHA = 5;
+    t("商店:基準價(CHA 5)", SE.Shop.buyPrice(100) === 100);
+    SE.State.data.player.attrs.CHA = 10;
+    t("商店:CHA 10 → 九折", SE.Shop.buyPrice(100) === 90);
+    t("商店:出售價 = 基價 × 0.5", SE.Shop.sellPrice(25, 0.5) === 12);
+
+    // 存檔遷移 v1 → v2:補上艦船
+    const legacyV1 = { version: 1, timestamp: 1, playTime: 0, node: "pro_common_14", state: { player: { attrs: { STR: 5, AGI: 5, INT: 5, WIL: 5, CHA: 5 }, level: 1, erosion: 0 }, flags: {}, inventory: {}, quests: {}, credits: 0, party: [], companions: {} } };
+    const migratedV2 = SE.Save.migrate(JSON.parse(JSON.stringify(legacyV1)));
+    t("遷移 v1→v2:補上艦船狀態", migratedV2.version === 2 && migratedV2.state.ship && migratedV2.state.ship.fuel === 6);
+
+    // 星系航線 lint:目標存在且雙向對稱、未鎖定星系有抵達節點
+    let laneBroken = [];
+    for (const sid in SE.DATA.systems) {
+        const sys = SE.DATA.systems[sid];
+        Object.keys(sys.lanes || {}).forEach(function (to) {
+            if (!SE.DATA.systems[to]) laneBroken.push(sid + "→" + to + " 不存在");
+            else if ((SE.DATA.systems[to].lanes || {})[sid] !== sys.lanes[to]) laneBroken.push(sid + "↔" + to + " 不對稱");
+        });
+        if (!sys.locked && !SE.DATA.nodes[sys.arrive]) laneBroken.push(sid + " 缺 arrive 節點");
+    }
+    t("星系航線對稱且抵達節點存在(" + Object.keys(SE.DATA.systems).length + " 星系)", laneBroken.length === 0);
+    if (laneBroken.length) out.insertAdjacentHTML("beforeend", '<div class="ng">' + laneBroken.join("<br>") + "</div>");
+
+    // 商店引用 lint
+    let shopBroken = [];
+    for (const shid in SE.DATA.shops) {
+        SE.DATA.shops[shid].buy.forEach(e => { if (!SE.DATA.items[e.item]) shopBroken.push(shid + "→" + e.item); });
+    }
+    t("商店販售品項皆存在", shopBroken.length === 0);
 
     /* ---------- 內容 lint:示範場景無斷鏈 ---------- */
     let broken = [];
