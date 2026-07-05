@@ -5,7 +5,7 @@
 (function () {
     "use strict";
     window.SE = window.SE || {};
-    SE.VERSION = "0.5.0-M4";
+    SE.VERSION = "1.0.0";
     SE.DATA = SE.DATA || {};
     SE.DATA.nodes = SE.DATA.nodes || {};
     SE.DATA.strings = SE.DATA.strings || {};

@@ -41,6 +41,7 @@
 <script src="js/data/chapter2.js"></script>
 <script src="js/data/chapter3.js"></script>
 <script src="js/data/chapter4.js"></script>
+<script src="js/data/chapter5.js"></script>
 <script src="js/data/demo.js"></script>
 <script>
 (function () {
@@ -329,6 +330,32 @@
     // 第三章抉擇互斥
     t("第三章公開/要挾為不同分支", SE.DATA.nodes.ch3_choice_public && SE.DATA.nodes.ch3_choice_leverage &&
         SE.DATA.nodes.ch3_choice_public !== SE.DATA.nodes.ch3_choice_leverage);
+
+    /* ---------- M5:四結局資格門與尾聲 ---------- */
+    t("第五章入口與決戰節點存在", !!SE.DATA.nodes.ch5_01 && !!SE.DATA.nodes.ch5_ending_gate && !!SE.DATA.encounters.enc_ch5_abyss);
+    t("四結局節點齊全", ["ch5_end_song", "ch5_end_burn", "ch5_end_heir", "ch5_end_abyss"].every(n => !!SE.DATA.nodes[n]));
+    t("尾聲動態建構器已註冊", typeof SE.Dyn.epilogue === "function");
+
+    // 結局資格:燃燒的星圖恆可選;新的弦歌需完整條件
+    const gate = SE.DATA.nodes.ch5_ending_gate;
+    const burnChoice = gate.choices.find(c => c.text.indexOf("燃燒的星圖") !== -1);
+    t("結局:燃燒的星圖無條件開放(保底)", burnChoice && burnChoice.show == null);
+    const songChoice = gate.choices.find(c => c.text.indexOf("新的弦歌") !== -1);
+    t("結局:新的弦歌有資格條件", songChoice && songChoice.show != null);
+
+    // 資格判定:白紙玩家只開放燃燒;滿條件玩家開放新的弦歌
+    SE.State.create({ class: "assault", origin: "officer" });
+    const showable = () => gate.choices.filter(c => SE.State.cond(c.show)).map(c => c.text.replace(/【([^】]+)】.*/, "$1"));
+    t("結局資格:無成就時僅『燃燒的星圖』", JSON.stringify(showable()) === JSON.stringify(["燃燒的星圖"]));
+    SE.State.setFlag("song.vessari", true); SE.State.setFlag("song.church", true); SE.State.setFlag("song.relic", true);
+    SE.State.setFlag("vigil.ally", true); SE.State.setFlag("ch4.allies_ready", true);
+    t("結局資格:滿足條件時解鎖『新的弦歌』", showable().indexOf("新的弦歌") !== -1);
+
+    // 尾聲後日談依旗標組裝
+    SE.State.setFlag("ending.song", true);
+    SE.State.apply([{ party: "kaila" }]);
+    const epi = SE.Dyn.epilogue();
+    t("尾聲:含結局基調與夥伴後日談", epi.indexOf("新紀元") !== -1 && epi.indexOf("凱菈") !== -1);
 
     /* ---------- 內容 lint:示範場景無斷鏈 ---------- */
     let broken = [];

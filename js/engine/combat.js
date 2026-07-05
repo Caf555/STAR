@@ -343,6 +343,7 @@
                 (lines.length ? '<div class="cb-result-lines">' + lines.join("<br>") + "</div>" : "") +
                 '<button class="menu-btn" type="button" id="cb-continue">▸ 繼續</button>';
             document.getElementById("cb-actions").innerHTML = "";
+            res.scrollIntoView({ block: "nearest" });
             document.getElementById("cb-continue").addEventListener("click", function () {
                 document.getElementById("combat").classList.remove("open");
                 Combat.cur = null;

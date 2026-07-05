@@ -463,11 +463,28 @@ html[data-fx="on"] #starfield::after {
     .alloc-row { grid-template-columns: 1fr auto; }
     .alloc-desc { display: none; }
     .cb-card { width: 138px; }
-    .hud-grid { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
-    .hud-panel { flex-direction: row; overflow-x: auto; gap: 10px; padding: 10px; }
-    .hud-panel .panel-block { min-width: 180px; flex: none; }
-    #panel-left { display: none; }           /* 行動版:左欄併入抽屜(M1 起) */
+    .hud-grid { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+
+    /* 下方面板:直向堆疊(免橫向拖拉),整體限高、可縱向捲動 */
+    .hud-panel {
+        flex-direction: column; overflow-y: auto; overflow-x: hidden;
+        gap: 10px; padding: 10px; max-height: 38vh;
+    }
+    .hud-panel .panel-block { min-width: 0; width: 100%; flex: none; }
+    #panel-left { display: none; }           /* 行動版:小隊/艦船資訊見戰鬥畫面與角色/星圖面板 */
     #panel-right { border-left: none; border-top: 1px solid var(--border-color); }
+    #panel-right .panel-block:last-child { order: -1; }   /* 系統快捷排最前 */
+
+    /* 戰鬥/艦戰介面:內部捲動,不外溢壓到下方面板 */
+    #combat, #shipcombat { overflow-y: auto; }
+    #cb-log, #sc-log { flex: none; height: 24vh; }
+    .sc-ships-row { flex-direction: column; }
+
+    /* 頂列:讓出空間給按鈕,章節標題改由任務面板呈現 */
+    .hud-chapter { display: none; }
+    .hud-header { gap: 8px; padding: 0 10px; }
+    .hud-header .icon-btn { padding: 6px 9px; font-size: .8em; }
+
     .menu-title { font-size: 2.2em; }
 }
 
