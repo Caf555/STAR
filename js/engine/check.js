@@ -30,6 +30,7 @@
             const mod = Check.modOf(attrVal);
             let skill = (spec.skill && actor.skills && actor.skills[spec.skill]) || 0;
             if (window.SE && SE.Tech && SE.State && SE.State.data) skill += SE.Tech.bonus("check_" + spec.attr);
+            if (spec.skill === "hacking" && window.SE && SE.State && SE.State.data && SE.State.benched("elena")) skill += 1;   // 伊蓮娜留守:逆向工程
             const total = die + mod + skill;
             let crit = null;
             if (die === 20) crit = "success";

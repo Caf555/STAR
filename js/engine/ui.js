@@ -43,11 +43,12 @@
                 const def = SE.DATA.companions[id];
                 const rec = s.companions[id];
                 if (!def || !rec) return;
+                const hpMax = SE.State.companionHpMax(id);
                 const div = document.createElement("div");
                 div.className = "hud-member";
                 div.innerHTML = '<div class="member-name">' + def.name + '<span class="cls">' + def.title + "</span></div>" +
-                    '<div class="bar hp"><i style="width:' + (100 * rec.hp / def.hpMax) + '%"></i></div>' +
-                    '<div class="stat-row"><span class="label">生命</span><span class="value">' + rec.hp + " / " + def.hpMax + "</span></div>";
+                    '<div class="bar hp"><i style="width:' + (100 * rec.hp / hpMax) + '%"></i></div>' +
+                    '<div class="stat-row"><span class="label">生命</span><span class="value">' + rec.hp + " / " + hpMax + "</span></div>";
                 pwrap.appendChild(div);
             });
 
@@ -239,6 +240,13 @@
         AFFINITY_LV: ["冷淡", "中立", "信任", "摯友", "羈絆"],
         affinityLevel(v) { return Math.max(0, Math.min(4, Math.floor((v || 0) / 2))); },
 
+        /** 個人任務解鎖條件:好感達「信任」(≥4)、尚未完成、且該夥伴確實有個人任務資料 */
+        pqEligible(id) {
+            const rec = SE.State.data.companions[id];
+            const aff = rec ? rec.affinity : 0;
+            return aff >= 4 && !SE.State.getFlag("pq." + id + "_done") && !!SE.DATA.nodes["pq_" + id + "_01"];
+        },
+
         openParty() {
             UI.renderParty();
             UI.openModal("modal-party");
@@ -269,8 +277,10 @@
                     '<div class="pc-actions">' +
                     '<button class="icon-btn" type="button" data-toggle="' + id + '">' +
                     (active ? "◂ 調回待命" : "▸ 加入出戰") + "</button>";
-                if (SE.DATA.nodes["talk_" + id]) {
-                    html += '<button class="icon-btn" type="button" data-talk="' + id + '">💬 交談</button>';
+                const hasPQ = UI.pqEligible(id);
+                if (hasPQ || SE.DATA.nodes["talk_" + id]) {
+                    html += '<button class="icon-btn' + (hasPQ ? " pq-ready" : "") + '" type="button" data-talk="' + id + '">💬 交談' +
+                        (hasPQ ? ' <span class="pq-badge">!</span>' : "") + "</button>";
                 }
                 html += "</div></div>";
             });
@@ -290,9 +300,10 @@
             body.querySelectorAll("[data-talk]").forEach(function (btn) {
                 btn.addEventListener("click", function () {
                     const id = btn.getAttribute("data-talk");
+                    const target = UI.pqEligible(id) ? "pq_" + id + "_01" : "talk_" + id;
                     UI.closeModal("modal-party");
                     SE.Core._returnNode = SE.State.data.node;
-                    SE.Core.goto("talk_" + id, { noAutosave: true });
+                    SE.Core.goto(target, { noAutosave: true });
                 });
             });
         },
@@ -308,6 +319,8 @@
                 const cur = String(st[key]);
                 btn.classList.toggle("on", cur === val);
             });
+            const vol = document.getElementById("setting-volume");
+            if (vol) vol.value = Math.round((st.volume != null ? st.volume : 0.6) * 100);
         },
 
         bindSettings() {
@@ -318,9 +331,22 @@
                     if (val === "true") val = true; else if (val === "false") val = false;
                     SE.settings[key] = val;
                     localStorage.setItem("se_settings", JSON.stringify(SE.settings));
+                    if (SE.Audio) {
+                        if (key === "sfxOn") SE.Audio.setSfxOn(val);
+                        if (key === "musicOn") SE.Audio.setMusicOn(val);
+                    }
                     UI.applySettings();
                 });
             });
+            const vol = document.getElementById("setting-volume");
+            if (vol) {
+                vol.addEventListener("input", function () {
+                    const v = parseInt(vol.value, 10) / 100;
+                    SE.settings.volume = v;
+                    localStorage.setItem("se_settings", JSON.stringify(SE.settings));
+                    if (SE.Audio) SE.Audio.setVolume(v);
+                });
+            }
         },
 
         /* ---------- 鍵盤 ---------- */

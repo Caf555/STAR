@@ -14,10 +14,14 @@
         /** 魅力修正後的購買價 */
         buyPrice(base) {
             const cha = SE.State.data.player.attrs.CHA || 5;
-            return Math.max(1, Math.round(base * (1 - 0.02 * (cha - 5))));
+            let mult = 1 - 0.02 * (cha - 5);
+            if (SE.State.benched("dax")) mult -= 0.05;   // 達克斯留守:賞金人脈
+            return Math.max(1, Math.round(base * mult));
         },
         sellPrice(base, rate) {
-            return Math.max(1, Math.floor(base * (rate == null ? 0.5 : rate)));
+            let r = rate == null ? 0.5 : rate;
+            if (SE.State.benched("dax")) r += 0.1;   // 達克斯留守:賞金人脈
+            return Math.max(1, Math.floor(base * r));
         },
 
         open(id) {

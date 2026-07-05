@@ -14,9 +14,10 @@
     SE.DATA.locations = SE.DATA.locations || {};
 
     /* 玩家偏好(與存檔分離,獨立保存) */
+    const SETTINGS_DEFAULT = { typewriter: true, fontSize: "md", fx: true, sfxOn: true, musicOn: true, volume: 0.6 };
     SE.settings = (function () {
-        try { return Object.assign({ typewriter: true, fontSize: "md", fx: true }, JSON.parse(localStorage.getItem("se_settings") || "{}")); }
-        catch (e) { return { typewriter: true, fontSize: "md", fx: true }; }
+        try { return Object.assign({}, SETTINGS_DEFAULT, JSON.parse(localStorage.getItem("se_settings") || "{}")); }
+        catch (e) { return Object.assign({}, SETTINGS_DEFAULT); }
     })();
 
     const Core = {
@@ -31,6 +32,7 @@
                 case "mainMenu":
                     SE.UI.showScreen("menu");
                     Core.refreshMenu();
+                    if (SE.Audio) SE.Audio.startAmbient("menu");
                     break;
                 case "newGame":
                     Core.newGame();
@@ -59,6 +61,7 @@
             SE.State.create({ name: "旅人" });
             SE.State.apply([{ item: "pistol_em", qty: 1 }]);
             SE.UI.showScreen("game");
+            if (SE.Audio) SE.Audio.startAmbient("explore");
             Core.goto("demo_01");
         },
 
@@ -67,6 +70,7 @@
             if (!save) { SE.UI.toast(SE.DATA.strings.loadFail || "讀檔失敗", true); return; }
             SE.UI.closeAllModals();
             SE.UI.showScreen("game");
+            if (SE.Audio) SE.Audio.startAmbient("explore");
             Core.goto(save.node || SE.DATA.start, { skipEnter: true, noAutosave: slot === "auto" });
         },
 
@@ -80,10 +84,24 @@
             SE.UI.bindSettings();
             SE.UI.bindKeyboard();
 
+            // 全域點擊音效(委派監聽,同時滿足瀏覽器「需使用者手勢」才能播放音訊的限制)
+            document.addEventListener("click", function (ev) {
+                if (!SE.Audio) return;
+                SE.Audio.resume();
+                const btn = ev.target.closest(".choice-btn, .menu-btn, .icon-btn, .create-card, .cb-act, .sm-node.reachable, [data-toggle], .char-plus");
+                if (btn) SE.Audio.play(btn.classList.contains("choice-btn") || btn.classList.contains("create-card") ? "select" : "click");
+            });
+
             document.getElementById("btn-new").addEventListener("click", () => Core.newGame());
             document.getElementById("btn-demo").addEventListener("click", () => Core.startDemo());
             document.getElementById("btn-char").addEventListener("click", () => SE.UI.openChar());
             document.getElementById("btn-map").addEventListener("click", () => { if (SE.State.data) SE.Starmap.open(); });
+            document.getElementById("btn-panel-toggle").addEventListener("click", function () {
+                const panel = document.getElementById("panel-right");
+                const collapsed = panel.classList.toggle("collapsed");
+                this.textContent = collapsed ? "▸ 展開資訊面板" : "▾ 收合資訊面板";
+                this.setAttribute("aria-expanded", String(!collapsed));
+            });
             document.getElementById("btn-tech").addEventListener("click", () => { if (SE.State.data) SE.Tech.open(); });
             document.getElementById("btn-party").addEventListener("click", () => { if (SE.State.data) SE.UI.openParty(); });
             document.getElementById("shop-tab-buy").addEventListener("click", () => { SE.Shop._tab = "buy"; SE.Shop.render(); });
@@ -110,6 +128,7 @@
                     SE.Save.save("auto");
                     SE.UI.closeAllModals();
                     SE.UI.showScreen("game");
+                    if (SE.Audio) SE.Audio.startAmbient("explore");
                     Core.goto(save.node || SE.DATA.start, { skipEnter: true });
                 });
                 ev.target.value = "";
@@ -126,6 +145,7 @@
                 "v" + SE.VERSION + "　" + (SE.DATA.strings.engineTag || "");
             Core.refreshMenu();
             SE.UI.showScreen("menu");
+            if (SE.Audio) SE.Audio.startAmbient("menu");
         }
     };
 

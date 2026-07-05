@@ -19,6 +19,7 @@
 <div id="summary"></div>
 
 <div id="cb-log" style="display:none"></div>
+<div id="toast-stack" style="display:none"></div>
 
 <script src="js/data/strings.js"></script>
 <script src="js/engine/state.js"></script>
@@ -29,6 +30,8 @@
 <script src="js/engine/shop.js"></script>
 <script src="js/engine/starmap.js"></script>
 <script src="js/engine/tech.js"></script>
+<script src="js/engine/audio.js"></script>
+<script src="js/engine/ui.js"></script>
 <script src="js/data/world.js"></script>
 <script src="js/data/origins.js"></script>
 <script src="js/data/items.js"></script>
@@ -42,6 +45,7 @@
 <script src="js/data/chapter3.js"></script>
 <script src="js/data/chapter4.js"></script>
 <script src="js/data/chapter5.js"></script>
+<script src="js/data/companion_quests.js"></script>
 <script src="js/data/demo.js"></script>
 <script>
 (function () {
@@ -146,7 +150,9 @@
     t("升級:獲得屬性點與技能點", SE.State.data.player.attrPoints === 1 && SE.State.data.player.skillPoints === 1);
     t("升級:生命回滿且上限隨等級成長", SE.State.data.player.hp === SE.State.data.player.hpMax);
     SE.State.apply([{ party: "kaila" }]);
-    t("夥伴入隊:party 與 companions 記錄", SE.State.data.party.indexOf("kaila") !== -1 && SE.State.data.companions.kaila.hp === SE.DATA.companions.kaila.hpMax);
+    t("夥伴入隊:party 與 companions 記錄(生命依當前等級成長)", SE.State.data.party.indexOf("kaila") !== -1 &&
+        SE.State.data.companions.kaila.hp === SE.State.companionHpMax("kaila") &&
+        SE.State.companionHpMax("kaila") === SE.DATA.companions.kaila.hpMax + (SE.State.data.player.level - 1) * 4);
     t("夥伴條件:companion 在隊", SE.State.cond({ companion: "kaila" }));
 
     /* ---------- 戰鬥機制(M1,無 DOM 部分) ---------- */
@@ -277,6 +283,114 @@
         !!SE.State.data.companions.thane && SE.State.data.party.indexOf("thane") === -1);
     t("好感等級換算", SE.UI ? true : true); // UI 需 DOM,略
 
+    /* ---------- 數值平衡:夥伴生命隨玩家等級同步成長 ---------- */
+    SE.State.data.player.level = 1;
+    const kailaLv1 = SE.State.companionHpMax("kaila");
+    t("夥伴生命(Lv1)= 基礎值", kailaLv1 === SE.DATA.companions.kaila.hpMax);
+    SE.State.data.player.level = 8;
+    const kailaLv8 = SE.State.companionHpMax("kaila");
+    t("夥伴生命隨玩家等級成長(Lv8 = 基礎 +28)", kailaLv8 === SE.DATA.companions.kaila.hpMax + 28);
+    t("成長幅度與玩家 hpMax 的等級項一致(+4/級)", kailaLv8 - kailaLv1 === (8 - 1) * 4);
+
+    /* ---------- 夥伴個人任務(6 位皆有一條,好感≥4 解鎖) ---------- */
+    const COMPANION_IDS = ["kaila", "rivet", "thane", "dax", "elena", "echo"];
+    t("六名夥伴皆有個人任務起始節點", COMPANION_IDS.every(id => !!SE.DATA.nodes["pq_" + id + "_01"]));
+
+    SE.State.data.companions.kaila = { affinity: 2, hp: 1, ep: 1 };
+    t("個人任務:好感不足(2)不觸發", !SE.UI.pqEligible("kaila"));
+    SE.State.data.companions.kaila.affinity = 4;
+    t("個人任務:好感達門檻(4)可觸發", SE.UI.pqEligible("kaila"));
+    SE.State.setFlag("pq.kaila_done", true);
+    t("個人任務:完成後不再重複觸發", !SE.UI.pqEligible("kaila"));
+
+    // 走完一條個人任務(達克斯,含檢定分支),確認 onEnter 效果與斷鏈
+    SE.State.data.companions.dax = { affinity: 4, hp: 1, ep: 1 };
+    SE.State.setFlag("pq.dax_done", false);
+    t("個人任務(達克斯)可觸發", SE.UI.pqEligible("dax"));
+    let pqBroken = [];
+    COMPANION_IDS.forEach(function (id) {
+        // 從起始節點走訪所有分支,確認每條路徑都能走到 pq.<id>_done 的收尾節點
+        const seen = {};
+        const stack = ["pq_" + id + "_01"];
+        let reachedDone = false;
+        while (stack.length) {
+            const nid = stack.pop();
+            if (seen[nid]) continue;
+            seen[nid] = true;
+            const n = SE.DATA.nodes[nid];
+            if (!n) { pqBroken.push(id + " → 缺節點 " + nid); continue; }
+            if ((n.onEnter || []).some(e => e.set === "pq." + id + "_done")) reachedDone = true;
+            (n.choices || []).forEach(function (c) {
+                if (c.goto) stack.push(c.goto);
+                if (c.check) { stack.push(c.check.success); stack.push(c.check.fail); }
+            });
+        }
+        if (!reachedDone) pqBroken.push(id + " 無任何路徑抵達完成節點");
+    });
+    t("六條個人任務所有分支皆可走到完成節點", pqBroken.length === 0);
+    if (pqBroken.length) out.insertAdjacentHTML("beforeend", '<div class="ng">' + pqBroken.join("<br>") + "</div>");
+
+    /* ---------- 夥伴「艦上待命」被動(留守=已招募但不在 2 人出戰小隊) ---------- */
+    SE.State.data.party = [];
+    SE.State.data.companions = {};
+    t("benched:未招募 = false", !SE.State.benched("kaila"));
+    SE.State.data.companions.kaila = { affinity: 0, hp: 1, ep: 1 };
+    t("benched:已招募但不在出戰小隊 = true", SE.State.benched("kaila"));
+    SE.State.data.party = ["kaila"];
+    t("benched:在出戰小隊中 = false", !SE.State.benched("kaila"));
+    SE.State.data.party = [];
+
+    // 凱菈留守:命中 +2
+    const dummyAtk = { side: "ally", agi: 6, statuses: [] };
+    const dummyDef = { agi: 6, statuses: [] };
+    t("凱菈留守:命中 +2%", SE.Combat.hitChance(dummyAtk, dummyDef, 0) === 87);
+    SE.State.data.party = ["kaila"];
+    t("凱菈出戰中:無加成", SE.Combat.hitChance(dummyAtk, dummyDef, 0) === 85);
+    SE.State.data.party = [];
+
+    // 回聲留守:對裂隙系 +15% 傷害、侵蝕額外 +1(逐一隔離兩個生效條件)
+    SE.State.data.companions.echo = { affinity: 0, hp: 1, ep: 1 };
+    const riftTarget = () => ({ name: "測試裂隙", hp: 100, hpMax: 100, statuses: [], defending: false, side: "enemy", def: { family: "rift", resist: {} } });
+    const humanTarget = () => ({ name: "測試人類", hp: 100, hpMax: 100, statuses: [], defending: false, side: "enemy", def: { family: "human", resist: {} } });
+    t("回聲留守 + 裂隙系目標:傷害 +15%(10→12,四捨五入)", SE.Combat.dealDamage({ side: "ally" }, riftTarget(), { base: [10, 10], dtype: "kin" }) === 12);
+    t("回聲留守 + 非裂隙系目標:無加成", SE.Combat.dealDamage({ side: "ally" }, humanTarget(), { base: [10, 10], dtype: "kin" }) === 10);
+    SE.State.data.party = ["echo"];
+    t("回聲出戰中(非留守)+ 裂隙系目標:無加成", SE.Combat.dealDamage({ side: "ally" }, riftTarget(), { base: [10, 10], dtype: "kin" }) === 10);
+    SE.State.data.party = [];
+    SE.State.data.player.erosion = 0;
+    SE.State.apply([{ erosion: 5 }]);
+    t("回聲留守:侵蝕增加額外 +1(5→6)", SE.State.data.player.erosion === 6);
+
+    // 達克斯留守:購買 −5%、出售 +10%(確定性公式,CHA=5 基準)
+    SE.State.data.player.attrs.CHA = 5;
+    const buyBase = SE.Shop.buyPrice(100);
+    SE.State.data.companions.dax = { affinity: 0, hp: 1, ep: 1 };
+    t("達克斯留守:購買價 −5%", SE.Shop.buyPrice(100) === buyBase - 5);
+    t("達克斯留守:出售倍率 +0.1", SE.Shop.sellPrice(100, 0.5) === 60);
+
+    // 伊蓮娜留守:駭入檢定 +1
+    delete SE.State.data.companions.elena;
+    SE.Check._rng = () => 0.5; // die 11
+    const noElena = SE.Check.roll({ attr: "INT", skill: "hacking", dc: 99 }, { attrs: { INT: 5 }, skills: { hacking: 2 } });
+    SE.State.data.companions.elena = { affinity: 0, hp: 1, ep: 1 };   // 已招募、不在 party → benched
+    const withElena = SE.Check.roll({ attr: "INT", skill: "hacking", dc: 99 }, { attrs: { INT: 5 }, skills: { hacking: 2 } });
+    t("伊蓮娜留守:駭入技能加值 +1", withElena.skill === noElena.skill + 1);
+    SE.Check._rng = Math.random;
+
+    // 鉚釘/伊蓮娜:製造精工與材料回收機率(統計抽樣,寬鬆區間避免 flaky)
+    SE.State.data.player.attrs.INT = 5;   // 低於 10,排除基礎精工機率干擾
+    SE.State.data.companions.rivet = { affinity: 0, hp: 1, ep: 1 };
+    SE.State.data.inventory = {};
+    SE.State.addItem("scrap_alloy", 1000);
+    let doubled = 0;
+    for (let i = 0; i < 400; i++) {
+        const before = SE.State.itemQty("frag_grenade");
+        SE.Tech.craft("r_grenade");
+        if (SE.State.itemQty("frag_grenade") - before > (SE.DATA.recipes.r_grenade.qty || 1)) doubled++;
+        SE.State.addItem("scrap_alloy", 2);
+    }
+    t("鉚釘留守:製造精工機率約 15%(400 次抽樣:" + doubled + ")", doubled > 20 && doubled < 100);
+
     // 航道解鎖
     t("解鎖前 mist 為鎖定", SE.Starmap.isLocked("mist"));
     SE.State.apply([{ unlock: "mist" }]);
@@ -356,6 +470,29 @@
     SE.State.apply([{ party: "kaila" }]);
     const epi = SE.Dyn.epilogue();
     t("尾聲:含結局基調與夥伴後日談", epi.indexOf("新紀元") !== -1 && epi.indexOf("凱菈") !== -1);
+
+    /* ---------- 音效系統(Web Audio 即時合成) ---------- */
+    t("SE.Audio 模組已註冊", typeof SE.Audio === "object");
+    window.SE.settings = window.SE.settings || { sfxOn: true, musicOn: true, volume: 0.6 };
+    let audioErr = null;
+    try {
+        SE.Audio.resume();
+        Object.keys(SE.Audio._sfx).forEach(name => SE.Audio.play(name));
+        SE.Audio.startAmbient("menu");
+        SE.Audio.startAmbient("explore");
+        SE.Audio.enterCombatMood();
+        SE.Audio.exitCombatMood();
+        SE.Audio.setVolume(0.3);
+        SE.Audio.setSfxOn(false);
+        SE.Audio.play("click");   // 靜音狀態下呼叫仍不得拋錯
+        SE.Audio.setSfxOn(true);
+        SE.Audio.setMusicOn(false);
+        SE.Audio.setMusicOn(true);
+        SE.Audio.stopAmbient();
+    } catch (e) { audioErr = e; }
+    t("全部 SFX 皆可播放且無例外(" + Object.keys(SE.Audio._sfx).length + " 種)", audioErr === null);
+    if (audioErr) out.insertAdjacentHTML("beforeend", '<div class="ng">' + audioErr.message + "</div>");
+    t("靜音時 play() 不拋錯、音量正確反映設定", SE.settings.volume === 0.3);
 
     /* ---------- 內容 lint:示範場景無斷鏈 ---------- */
     let broken = [];

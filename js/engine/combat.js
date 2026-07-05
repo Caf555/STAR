@@ -57,15 +57,17 @@
             document.getElementById("cb-result").style.display = "none";
             document.getElementById("cb-log").innerHTML = "";
             Combat.log("⚔ " + (enc.title || "遭遇戰") + " 開始!", "sys");
+            if (SE.Audio) SE.Audio.enterCombatMood();
             Combat.nextRound();
         },
 
         _allyFromDef(id, def, persist) {
+            const hpMax = SE.State.companionHpMax(id) || def.hpMax;
             return {
                 key: id, side: "ally", ref: id,
                 name: def.name, row: def.row || "front",
-                hp: persist && persist.hp != null ? persist.hp : def.hpMax,
-                hpMax: def.hpMax,
+                hp: persist && persist.hp != null ? persist.hp : hpMax,
+                hpMax: hpMax,
                 ep: persist && persist.ep != null ? persist.ep : def.epMax,
                 epMax: def.epMax,
                 agi: def.attrs.AGI, attrs: def.attrs,
@@ -138,6 +140,7 @@
         hitChance(atk, def, bonus) {
             let h = 85 + 3 * (atk.agi - def.agi) + (bonus || 0);
             if (atk.statuses.some(s => s.id === "suppress")) h -= 15;
+            if (atk.side === "ally" && SE.State.benched("kaila")) h += 2;   // 凱菈留守:戰術簡報
             return clamp(h, 50, 98);
         },
 
@@ -164,6 +167,7 @@
                 dmg += SE.Tech.bonus("dmg");
                 if (opt.dtype === "psi") dmg += SE.Tech.bonus("psi");
             }
+            if (atk && atk.side === "ally" && target.def && target.def.family === "rift" && SE.State.benched("echo")) dmg = Math.round(dmg * 1.15); // 回聲留守:淵之低語
             dmg = Math.round(dmg * (opt.mult || 1) * Combat.resistOf(target, opt.dtype));
             if (target.side === "ally" && SE.Tech) dmg = Math.max(0, dmg - SE.Tech.bonus("armor"));
             if (target.defending) dmg = Math.round(dmg * 0.5);
@@ -172,10 +176,11 @@
                 const absorbed = Math.min(shield.value, dmg);
                 shield.value -= absorbed; dmg -= absorbed;
                 if (shield.value <= 0) target.statuses = target.statuses.filter(s => s !== shield);
-                if (absorbed > 0) Combat.log(target.name + " 的護盾吸收了 " + absorbed + " 點傷害", "sys");
+                if (absorbed > 0) { Combat.log(target.name + " 的護盾吸收了 " + absorbed + " 點傷害", "sys"); if (SE.Audio) SE.Audio.play("shield"); }
             }
             dmg = Math.max(0, dmg);
             target.hp = Math.max(0, target.hp - dmg);
+            if (SE.Audio) SE.Audio.play("hit_" + (opt.dtype || "kin"));
             return dmg;
         },
 
@@ -183,6 +188,7 @@
             let chance = st.chance != null ? st.chance : 1;
             if (st.chanceMech != null && target.def && target.def.family === "mech") chance = st.chanceMech;
             if (Math.random() > chance) return false;
+            if (SE.Audio) SE.Audio.play(st.id === "shield" ? "shield" : "status");
             if (st.id === "shield") {
                 target.statuses = target.statuses.filter(s => s.id !== "shield");
                 target.statuses.push({ id: "shield", value: st.value, turns: 99 });
@@ -203,6 +209,7 @@
             const hit = Combat.hitChance(actor, target, w.hitBonus || 0);
             if (rnd(1, 100) > hit) {
                 Combat.log(actor.name + " 攻擊 " + target.name + " —— 未命中(" + hit + "%)", "miss");
+                if (SE.Audio) SE.Audio.play("miss");
             } else {
                 const dmg = Combat.dealDamage(actor, target, { base: w.dmg, dtype: w.dtype, flatMod: Combat.attrMod(actor, w) });
                 Combat.log(actor.name + " 攻擊 " + target.name + ",造成 " + dmg + " 點傷害", actor.side === "ally" ? "good" : "bad");
@@ -222,6 +229,7 @@
                     const amt = Math.round(t.hpMax * sk.heal);
                     t.hp = Math.min(t.hpMax, t.hp + amt);
                     Combat.log(actor.name + " 對 " + t.name + " 使用【" + sk.name + "】,恢復 " + amt + " 點生命", "good");
+                    if (SE.Audio) SE.Audio.play("heal");
                     return;
                 }
                 if (sk.shield) {
@@ -232,6 +240,7 @@
                 const hit = Combat.hitChance(actor, t, sk.hitBonus || 0);
                 if (rnd(1, 100) > hit) {
                     Combat.log(actor.name + " 的【" + sk.name + "】未命中 " + t.name + "(" + hit + "%)", "miss");
+                    if (SE.Audio) SE.Audio.play("miss");
                     return;
                 }
                 const dmg = Combat.dealDamage(actor, t, {
@@ -255,6 +264,7 @@
             if (it.combat.heal) {
                 target.hp = Math.min(target.hpMax, target.hp + it.combat.heal);
                 Combat.log(actor.name + " 對 " + target.name + " 使用【" + it.name + "】,恢復 " + it.combat.heal + " 點生命", "good");
+                if (SE.Audio) SE.Audio.play("heal");
             } else if (it.combat.dmg) {
                 const dmg = Combat.dealDamage(actor, target, { base: it.combat.dmg, dtype: it.combat.dtype || "kin" });
                 Combat.log(actor.name + " 對 " + target.name + " 投擲【" + it.name + "】,造成 " + dmg + " 點傷害", "good");
@@ -310,6 +320,7 @@
         finish(victory) {
             const c = Combat.cur;
             c.over = true;
+            if (SE.Audio) { SE.Audio.play(victory ? "victory" : "defeat"); SE.Audio.exitCombatMood(); }
             // 我方狀態寫回(戰敗恢復 30%)
             c.actors.filter(a => a.side === "ally").forEach(function (a) {
                 const hp = victory ? Math.max(1, a.hp) : Math.max(1, Math.round(a.hpMax * 0.3));

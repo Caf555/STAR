@@ -15,7 +15,7 @@
             weapon: "pistol_service",
             skills: ["guard_wall"],
             row: "front",
-            shipPassive: "艦上待命:戰術簡報(全隊命中 +2%,M3 啟用)"
+            shipPassive: "艦上待命:戰術簡報(未出戰時,全隊命中 +2%)"
         },
         rivet: {
             name: "鉚釘 RIVET",
@@ -25,7 +25,7 @@
             weapon: "welding_arm",
             skills: ["nano_heal", "overload"],
             row: "back",
-            shipPassive: "艦上待命:自動保養(製造品質加成)"
+            shipPassive: "艦上待命:自動保養(未出戰時,製造精工機率 +15%)"
         },
         thane: {
             name: "塞恩",
@@ -35,7 +35,7 @@
             weapon: "vessari_lance",
             skills: ["precise_shot", "chord_quake"],
             row: "back",
-            shipPassive: "艦上待命:領航直覺(躍遷燃料偶爾不消耗)"
+            shipPassive: "艦上待命:領航直覺(未出戰時,躍遷有 25% 機率不消耗燃料)"
         },
         dax: {
             name: "「野犬」達克斯",
@@ -45,7 +45,7 @@
             weapon: "long_rifle",
             skills: ["precise_shot", "suppress_fire"],
             row: "back",
-            shipPassive: "艦上待命:賞金人脈(商店售價略高)"
+            shipPassive: "艦上待命:賞金人脈(未出戰時,購買價 −5%、出售價 +10%)"
         },
         elena: {
             name: "伊蓮娜·魁",
@@ -55,7 +55,7 @@
             weapon: "pistol_em",
             skills: ["overload", "nano_heal"],
             row: "back",
-            shipPassive: "艦上待命:逆向工程(製造與駭入加成)"
+            shipPassive: "艦上待命:逆向工程(未出戰時,製造有機率回收材料;駭入檢定 +1)"
         },
         echo: {
             name: "回聲",
@@ -65,7 +65,7 @@
             weapon: "tuning_blade",
             skills: ["chord_quake", "tune_shield"],
             row: "front",
-            shipPassive: "艦上待命:淵之低語(對裂隙獸傷害加成,但船員侵蝕緩增)"
+            shipPassive: "艦上待命:淵之低語(未出戰時,對裂隙系傷害 +15%,但侵蝕增加時多 +1)"
         }
     });
 
