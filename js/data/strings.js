@@ -7,7 +7,7 @@
     SE.DATA = SE.DATA || {};
 
     SE.DATA.strings = {
-        engineTag: "M3 系統完備與第二章",
+        engineTag: "M4 第三/四章",
         demoChapter: "示範場景〈曙光港的訊號〉",
         noQuest: "(目前沒有追蹤中的任務)",
 

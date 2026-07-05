@@ -31,6 +31,8 @@
 
         /* ---- 關鍵道具 ---- */
         med_crate: { name: "蘿希的藥箱", type: "key", desc: "貼著醫療標誌的合金箱。收件人:七號泊架,卡爾。" },
+        deepwell_evidence: { name: "深井證據鏈", type: "key", desc: "黑曜「深井計畫」的完整實驗日誌與軍令。足以讓卡爾榭上絞刑架——如果有人敢審判黑曜的話。" },
+        vigil_cipher: { name: "守夜人密鑰", type: "key", desc: "從 VIGIL 具現核中析出的核心指令碼片段。鉚釘看著它,久久不語。" },
         sealed_case: { name: "密封手提箱", type: "key", desc: "軍規密封箱,鎖著一段你還不明白的重量。收件人:曙光港,斷纜酒吧,賈維。" },
         weaver_fragment: { name: "織界者碎片", type: "key", desc: "溫熱的黑色晶體,內部有光在移動,像一句沒說完的話。" },
         echo_keycard: { name: "迴響號啟動鑰卡", type: "key", desc: "賈維交給你的舊式鑰卡,邊角磨得發亮。" }

@@ -420,7 +420,7 @@
     };
     nodes.ch2_converge2 = {
         location: "echo_bridge", chapterLabel: CH,
-        onEnter: [{ unlock: "mutering" }, { chapter: 3 }, { xp: 200 }, { set: "ch2.finished" }],
+        onEnter: [{ quest: "q_ch2", op: "complete" }, { unlock: "mutering" }, { chapter: 3 }, { xp: 200 }, { set: "ch2.finished" }],
         text: "沒有人回答得了這個問題。\n\n{凱菈}望向星圖上緘默之環的方向——那裡,黑曜的深井正在肢解弦網;那裡,珂黛聽見的飢餓之聲正越來越響;那裡,有守夜人 VIGIL 沉睡了四十萬年的主錨點。\n\n「不管那是什麼,」她握緊拳頭,「答案在第一弦。」\n\n{塞恩}輕聲哼起歸巢調的最後三個音——那斷掉的三個音,如今在他喉間,第一次接上了。他睜開濕潤的眼:「回家的路……我找到了。」\n\n你將航向鎖定緘默之環。掌心的鑰石不再灼燙,而是安穩地、堅定地搏動著,像終於找到了方向的心跳。\n\n**幽弦星區的真相,就在弦的另一端等著你。**",
         choices: [
             { text: "—— 第二章 完 ——", goto: "ch2_fin" }
@@ -428,11 +428,11 @@
     };
     nodes.ch2_fin = {
         location: "echo_bridge", chapterLabel: CH, travel: true,
-        text: "感謝遊玩《星淵迴響》第二章〈弦上的低語〉(M3 里程碑)。\n\n本階段內容:科技樹與製造、艦船對戰、夥伴好感與小隊調度、開放式三段歌謠(維薩里/教會/遺跡任意順序)、塞恩與達克斯入隊、深井與卡爾榭陰謀線揭露。\n\n接下來的 M4–M5 里程碑:第三章〈守夜人〉與 VIGIL 對峙、第四章〈裂隙〉災變結盟、第五章〈弦心〉與四種結局。\n\n你可以繼續自由航行探索、調度小隊與研究科技,或重新開始體驗其他出身。",
+        text: "三段歌謠合而為一,緘默之環的座標在星圖上亮起。四十萬年前的求救,終於有了回應的方向。\n\n迴響號的航向鎖定了那片沒有人活著回來過的遺跡群。船員們各懷心事——但沒有人提議掉頭。",
         choices: [
-            { text: "開啟星圖,自由航行", action: "starmap" },
-            { text: "建立新角色", action: "newGame" },
-            { text: "回到主選單", action: "mainMenu" }
+            { text: "▸ 第三章〈守夜人〉", goto: "ch3_01" },
+            { text: "先在星區內自由航行(補給/科技/交談)", action: "starmap" },
+            { text: "回到主選單(進度已自動存檔)", action: "mainMenu" }
         ]
     };
 

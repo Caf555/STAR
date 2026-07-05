@@ -39,6 +39,8 @@
 <script src="js/data/prologue.js"></script>
 <script src="js/data/chapter1.js"></script>
 <script src="js/data/chapter2.js"></script>
+<script src="js/data/chapter3.js"></script>
+<script src="js/data/chapter4.js"></script>
 <script src="js/data/demo.js"></script>
 <script>
 (function () {
@@ -259,8 +261,8 @@
     t("科技:意志檢定 +1(技能加值含科技)", wr.skill >= 1);
     SE.Check._rng = Math.random;
 
-    // 製造
-    SE.State.create({ class: "assault", origin: "officer", attrs: { STR: 5, AGI: 5, INT: 11, WIL: 5, CHA: 5 } });
+    // 製造(INT 9:低於精工門檻,產出確定)
+    SE.State.create({ class: "assault", origin: "officer", attrs: { STR: 5, AGI: 6, INT: 9, WIL: 5, CHA: 5 } });
     SE.State.addItem("med_gel", 2); SE.State.addItem("scrap_alloy", 1);
     t("製造:材料足夠可製作", SE.Tech.canCraft(SE.DATA.recipes.r_stim));
     const stim0 = SE.State.itemQty("stim_patch");
@@ -307,6 +309,26 @@
     }
     t("科技前置與製造配方引用完整", techBroken.length === 0);
     if (techBroken.length) out.insertAdjacentHTML("beforeend", '<div class="ng">' + techBroken.join("<br>") + "</div>");
+
+    /* ---------- M4:結盟計數、VIGIL 解法、災變 ---------- */
+    SE.State.create({ class: "assault", origin: "officer" });
+    SE.State.apply([{ allyCount: true }]);
+    t("結盟:0 盟友未就緒", !SE.State.getFlag("ch4.allies_ready") && SE.State.getFlag("ch4.ally_count") === 0);
+    SE.State.setFlag("ally.fed", true);
+    SE.State.apply([{ allyCount: true }]);
+    t("結盟:1 盟友仍未就緒", !SE.State.getFlag("ch4.allies_ready") && SE.State.getFlag("ch4.ally_count") === 1);
+    SE.State.setFlag("ally.exile", true);
+    SE.State.apply([{ allyCount: true }]);
+    t("結盟:2 盟友即就緒", SE.State.getFlag("ch4.allies_ready") === true && SE.State.getFlag("ch4.ally_count") === 2);
+
+    t("章節銜接:ch2_fin→ch3_01、ch3_fin→ch4_01 存在", !!SE.DATA.nodes.ch3_01 && !!SE.DATA.nodes.ch4_01);
+    t("VIGIL 三解法節點存在", !!SE.DATA.nodes.ch4_vigil_ally && !!SE.DATA.nodes.ch4_vigil_tool && !!SE.DATA.nodes.ch4_vigil_defeated);
+    t("隱藏夥伴回聲可招募節點存在", !!SE.DATA.nodes.ch4_echo_03 && !!SE.DATA.companions.echo);
+    t("伊蓮娜為第三章可招募夥伴", !!SE.DATA.companions.elena && !!SE.DATA.nodes.ch3_core_03);
+    t("災變旗標於第四章開場設定", (SE.DATA.nodes.ch4_01.onEnter || []).some(e => e.set === "world.cataclysm"));
+    // 第三章抉擇互斥
+    t("第三章公開/要挾為不同分支", SE.DATA.nodes.ch3_choice_public && SE.DATA.nodes.ch3_choice_leverage &&
+        SE.DATA.nodes.ch3_choice_public !== SE.DATA.nodes.ch3_choice_leverage);
 
     /* ---------- 內容 lint:示範場景無斷鏈 ---------- */
     let broken = [];
