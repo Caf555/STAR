@@ -201,6 +201,14 @@
                     }
                     continue;
                 }
+                if ("allyCount" in e) {
+                    // 結算第四章盟友數:達 2 個陣營即可對峙 VIGIL
+                    let n = 0;
+                    ["ally.fed", "ally.church", "ally.exile"].forEach(f => { if (State.getFlag(f)) n++; });
+                    State.setFlag("ch4.ally_count", n);
+                    if (n >= 2) State.setFlag("ch4.allies_ready", true);
+                    continue;
+                }
                 if ("unlock" in e) {
                     if (s.unlocked.indexOf(e.unlock) === -1) {
                         s.unlocked.push(e.unlock);
@@ -237,15 +245,24 @@
                 }
                 if ("system" in e) { s.ship.system = e.system; continue; }
                 if ("refuel" in e) {
-                    // 補滿燃料,每格價格 = e.refuel;學分不足則能補幾格補幾格
+                    // 靠泊服務:免費修復船體至滿,並依學分補充燃料(每格 = e.refuel)
+                    if (s.ship.hull < s.ship.hullMax) {
+                        s.ship.hull = s.ship.hullMax;
+                        msgs.push(T.repaired || "船體已修復");
+                    }
                     const per = e.refuel || 10;
                     const want = s.ship.fuelMax - s.ship.fuel;
                     const can = Math.min(want, Math.floor(s.credits / per));
                     if (want <= 0) { msgs.push(T.fuelFull || "燃料已滿"); continue; }
-                    if (can <= 0) { msgs.push(T.noCredits || "學分不足"); continue; }
+                    if (can <= 0) { msgs.push(T.noCredits || "學分不足,無法加油"); continue; }
                     s.credits -= can * per;
                     s.ship.fuel += can;
                     msgs.push((T.refueled || "燃料 +") + can + "(−" + (can * per) + " " + (T.credits || "學分") + ")");
+                    continue;
+                }
+                if ("repairHull" in e) {
+                    s.ship.hull = s.ship.hullMax;
+                    msgs.push(T.repaired || "船體已修復");
                     continue;
                 }
                 if ("quest" in e) {

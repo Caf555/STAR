@@ -46,6 +46,26 @@
             skills: ["precise_shot", "suppress_fire"],
             row: "back",
             shipPassive: "艦上待命:賞金人脈(商店售價略高)"
+        },
+        elena: {
+            name: "伊蓮娜·魁",
+            title: "黑曜叛逃科學家",
+            hpMax: 50, epMax: 40,
+            attrs: { STR: 4, AGI: 6, INT: 10, WIL: 7, CHA: 6 },
+            weapon: "pistol_em",
+            skills: ["overload", "nano_heal"],
+            row: "back",
+            shipPassive: "艦上待命:逆向工程(製造與駭入加成)"
+        },
+        echo: {
+            name: "回聲",
+            title: "裂隙誕生的擬人存在",
+            hpMax: 60, epMax: 45,
+            attrs: { STR: 6, AGI: 7, INT: 7, WIL: 9, CHA: 4 },
+            weapon: "tuning_blade",
+            skills: ["chord_quake", "tune_shield"],
+            row: "front",
+            shipPassive: "艦上待命:淵之低語(對裂隙獸傷害加成,但船員侵蝕緩增)"
         }
     });
 

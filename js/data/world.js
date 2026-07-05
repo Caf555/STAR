@@ -42,7 +42,7 @@
         mutering: {
             name: "緘默之環", sub: "織界者遺跡群",
             pos: [420, 380], lanes: { helios: 3 },
-            locked: true, blurb: "未知訊號干擾,座標不完整(第三章開放)"
+            locked: true, arrive: "arrive_mutering", blurb: "未知訊號干擾,座標不完整(第三章開放)"
         },
         chordheart: {
             name: "弦心星系", sub: "???",

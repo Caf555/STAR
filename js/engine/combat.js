@@ -80,6 +80,7 @@
 
         nextRound() {
             const c = Combat.cur;
+            if (!c || c.over) return;
             c.round++;
             c.queue = c.actors.filter(a => a.hp > 0)
                 .sort((a, b) => b.agi - a.agi || (a.side === "ally" ? -1 : 1));
@@ -89,7 +90,7 @@
 
         nextTurn() {
             const c = Combat.cur;
-            if (c.over) return;
+            if (!c || c.over) return;
             if (Combat.checkEnd()) return;
             let actor;
             do { actor = c.queue.shift(); } while (actor && actor.hp <= 0);
@@ -122,12 +123,12 @@
         },
 
         after() {
-            if (Combat.checkEnd()) return;
+            if (!Combat.cur || Combat.checkEnd()) return;
             setTimeout(() => Combat.nextTurn(), 420);
         },
 
         checkEnd() {
-            if (Combat.cur.over) return true;
+            if (!Combat.cur || Combat.cur.over) return true;
             if (Combat.alive("enemy").length === 0) { Combat.finish(true); return true; }
             if (Combat.alive("ally").length === 0) { Combat.finish(false); return true; }
             return false;
@@ -277,7 +278,7 @@
 
         /* ---------- 敵方 AI ---------- */
         aiAct(actor) {
-            if (Combat.cur.over || actor.hp <= 0) return;
+            if (!Combat.cur || Combat.cur.over || actor.hp <= 0) return;
             const def = actor.def;
             // 低血量偶爾防禦
             if (actor.hp / actor.hpMax < 0.25 && Math.random() < 0.2) { Combat.doDefend(actor); return; }
