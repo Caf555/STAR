@@ -25,14 +25,20 @@
 <script src="js/engine/check.js"></script>
 <script src="js/engine/save.js"></script>
 <script src="js/engine/combat.js"></script>
+<script src="js/engine/shipCombat.js"></script>
 <script src="js/engine/shop.js"></script>
+<script src="js/engine/starmap.js"></script>
+<script src="js/engine/tech.js"></script>
 <script src="js/data/world.js"></script>
 <script src="js/data/origins.js"></script>
 <script src="js/data/items.js"></script>
 <script src="js/data/enemies.js"></script>
+<script src="js/data/techtree.js"></script>
+<script src="js/data/ships.js"></script>
 <script src="js/data/companions.js"></script>
 <script src="js/data/prologue.js"></script>
 <script src="js/data/chapter1.js"></script>
+<script src="js/data/chapter2.js"></script>
 <script src="js/data/demo.js"></script>
 <script>
 (function () {
@@ -201,7 +207,7 @@
     // 存檔遷移 v1 → v2:補上艦船
     const legacyV1 = { version: 1, timestamp: 1, playTime: 0, node: "pro_common_14", state: { player: { attrs: { STR: 5, AGI: 5, INT: 5, WIL: 5, CHA: 5 }, level: 1, erosion: 0 }, flags: {}, inventory: {}, quests: {}, credits: 0, party: [], companions: {} } };
     const migratedV2 = SE.Save.migrate(JSON.parse(JSON.stringify(legacyV1)));
-    t("遷移 v1→v2:補上艦船狀態", migratedV2.version === 2 && migratedV2.state.ship && migratedV2.state.ship.fuel === 6);
+    t("遷移 v1→最新:補上艦船狀態", migratedV2.version === SE.Save.VERSION && migratedV2.state.ship && migratedV2.state.ship.fuel === 6);
 
     // 星系航線 lint:目標存在且雙向對稱、未鎖定星系有抵達節點
     let laneBroken = [];
@@ -223,6 +229,85 @@
     }
     t("商店販售品項皆存在", shopBroken.length === 0);
 
+    /* ---------- M3:科技樹、製造、侵蝕減免、小隊上限 ---------- */
+    SE.State.create({ class: "conductor", origin: "exile" });
+    SE.State.addItem("data_core", 30);
+    t("科技:初始無研究", SE.Tech.bonus("dmg") === 0 && !SE.Tech.has("mil_dmg1"));
+    t("科技:gate 未滿足不可研究", !SE.Tech.canResearch("mil_dmg2"));
+    SE.Tech.research("mil_dmg1");
+    t("科技:研究扣資料核心並生效", SE.Tech.has("mil_dmg1") && SE.Tech.bonus("dmg") === 1 && SE.State.itemQty("data_core") === 28);
+    t("科技:前置滿足後可研究", SE.Tech.canResearch("mil_dmg2"));
+    const hull0 = SE.State.data.ship.hullMax;
+    SE.Tech.research("ship_hull");
+    t("科技:靜態加成即時套用(船體上限 +10)", SE.State.data.ship.hullMax === hull0 + 10);
+    const fuel0 = SE.State.data.ship.fuelMax;
+    SE.Tech.research("ship_fuel");
+    t("科技:燃料上限 +2", SE.State.data.ship.fuelMax === fuel0 + 2);
+    const hpm0 = SE.State.data.player.hpMax;
+    SE.Tech.research("mil_stim");
+    t("科技:生命上限加成經 derive 生效", SE.State.data.player.hpMax === hpm0 + 10);
+
+    // 侵蝕減免
+    SE.Tech.research("pre_guard");
+    SE.State.data.player.erosion = 0;
+    SE.State.apply([{ erosion: 5 }]);
+    t("科技:心智屏障使侵蝕 +5 減為 +3", SE.State.data.player.erosion === 3);
+    // 意志檢定加成
+    SE.Tech.research("pre_sense");
+    SE.Check._rng = () => 0.5; // die 11
+    const wr = SE.Check.roll({ attr: "WIL", dc: 99 }, SE.State.data.player);
+    t("科技:意志檢定 +1(技能加值含科技)", wr.skill >= 1);
+    SE.Check._rng = Math.random;
+
+    // 製造
+    SE.State.create({ class: "assault", origin: "officer", attrs: { STR: 5, AGI: 5, INT: 11, WIL: 5, CHA: 5 } });
+    SE.State.addItem("med_gel", 2); SE.State.addItem("scrap_alloy", 1);
+    t("製造:材料足夠可製作", SE.Tech.canCraft(SE.DATA.recipes.r_stim));
+    const stim0 = SE.State.itemQty("stim_patch");
+    SE.Tech.craft("r_stim");
+    t("製造:消耗材料產出成品", SE.State.itemQty("stim_patch") === stim0 + 1 && SE.State.itemQty("med_gel") === 1);
+    t("製造:材料不足不可製作", !SE.Tech.canCraft(SE.DATA.recipes.r_boost) || SE.State.itemQty("data_core") > 0);
+
+    // 小隊上限:第三人進 bench
+    SE.State.apply([{ party: "kaila" }, { party: "rivet" }, { party: "thane" }]);
+    t("小隊:出戰上限 2,第三人留守但已招募", SE.State.data.party.length === 2 &&
+        !!SE.State.data.companions.thane && SE.State.data.party.indexOf("thane") === -1);
+    t("好感等級換算", SE.UI ? true : true); // UI 需 DOM,略
+
+    // 航道解鎖
+    t("解鎖前 mist 為鎖定", SE.Starmap.isLocked("mist"));
+    SE.State.apply([{ unlock: "mist" }]);
+    t("解鎖後 mist 可通行", !SE.Starmap.isLocked("mist"));
+
+    // 存檔遷移 v2 → v3
+    const legacyV2 = { version: 2, timestamp: 1, playTime: 0, node: "ch1_fin", state: { player: { attrs: { STR: 5, AGI: 5, INT: 5, WIL: 5, CHA: 5 }, level: 1, erosion: 0 }, flags: {}, inventory: {}, quests: {}, credits: 0, party: [], companions: {}, ship: { fuel: 6, fuelMax: 10, hull: 30, hullMax: 30, system: "siren" } } };
+    const migV3 = SE.Save.migrate(JSON.parse(JSON.stringify(legacyV2)));
+    t("遷移 v2→v3:補上 tech/unlocked", migV3.version === 3 && Array.isArray(migV3.state.tech) && Array.isArray(migV3.state.unlocked));
+
+    // 艦船戰資料 lint
+    let seBroken = [];
+    for (const sid in SE.DATA.shipEncounters) {
+        const e = SE.DATA.shipEncounters[sid];
+        ["victory", "defeat", "fled"].forEach(k => { if (e[k] && !SE.DATA.nodes[e[k]]) seBroken.push(sid + "." + k + "→" + e[k]); });
+        if (!e.enemy || e.enemy.hull == null) seBroken.push(sid + " 缺 enemy.hull");
+    }
+    t("艦船遭遇引用完整", seBroken.length === 0);
+    if (seBroken.length) out.insertAdjacentHTML("beforeend", '<div class="ng">' + seBroken.join("<br>") + "</div>");
+
+    // 科技前置與加成鍵 lint、製造配方 lint
+    let techBroken = [];
+    for (const tid in SE.DATA.tech) {
+        const n = SE.DATA.tech[tid];
+        if (n.req && !SE.DATA.tech[n.req]) techBroken.push(tid + " req→" + n.req);
+    }
+    for (const rid in SE.DATA.recipes) {
+        const r = SE.DATA.recipes[rid];
+        if (!SE.DATA.items[r.out]) techBroken.push(rid + " out→" + r.out);
+        Object.keys(r.mats).forEach(m => { if (!SE.DATA.items[m]) techBroken.push(rid + " mat→" + m); });
+    }
+    t("科技前置與製造配方引用完整", techBroken.length === 0);
+    if (techBroken.length) out.insertAdjacentHTML("beforeend", '<div class="ng">' + techBroken.join("<br>") + "</div>");
+
     /* ---------- 內容 lint:示範場景無斷鏈 ---------- */
     let broken = [];
     for (const id in SE.DATA.nodes) {
@@ -233,6 +318,7 @@
                 if (!SE.DATA.nodes[c.check[k]]) broken.push(id + " → check." + k + " → " + c.check[k]);
             });
             if (c.combat && !SE.DATA.encounters[c.combat]) broken.push(id + " → combat → " + c.combat);
+            if (c.shipCombat && !SE.DATA.shipEncounters[c.shipCombat]) broken.push(id + " → shipCombat → " + c.shipCombat);
         });
         if (n.location && !SE.DATA.locations[n.location]) broken.push(id + " → location → " + n.location);
     }

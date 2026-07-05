@@ -16,7 +16,7 @@
         },
         helios: {
             name: "赫利俄斯星系", sub: "星區樞紐・燈塔站",
-            pos: [300, 225], lanes: { siren: 2, newcanaan: 2, ironcrown: 2, hymn: 3, mutering: 3 },
+            pos: [300, 225], lanes: { siren: 2, newcanaan: 2, ironcrown: 2, hymn: 3, mist: 3, mutering: 3 },
             arrive: "arrive_helios"
         },
         newcanaan: {
@@ -27,17 +27,17 @@
         ironcrown: {
             name: "鐵冠星系", sub: "黑曜採礦重鎮",
             pos: [180, 95], lanes: { helios: 2 },
-            locked: true, blurb: "黑曜集團封鎖航道(第二章開放)"
+            locked: true, arrive: "arrive_ironcrown", blurb: "黑曜集團封鎖航道(第二章開放)"
         },
         hymn: {
             name: "聖詠星系", sub: "星語教會聖地",
             pos: [520, 300], lanes: { helios: 3 },
-            locked: true, blurb: "朝聖航道需教會通行證(第二章開放)"
+            locked: true, arrive: "arrive_hymn", blurb: "朝聖航道需教會通行證(第二章開放)"
         },
         mist: {
             name: "霧海星雲", sub: "流亡者船團藏身處",
-            pos: [70, 150], lanes: { siren: 2 },
-            locked: true, blurb: "星雲亂流,需要領航資料(第二章開放)"
+            pos: [70, 150], lanes: { siren: 2, helios: 3 },
+            locked: true, arrive: "arrive_mist", blurb: "星雲亂流,需要領航資料(第二章開放)"
         },
         mutering: {
             name: "緘默之環", sub: "織界者遺跡群",

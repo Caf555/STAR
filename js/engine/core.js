@@ -5,7 +5,7 @@
 (function () {
     "use strict";
     window.SE = window.SE || {};
-    SE.VERSION = "0.3.0-M2";
+    SE.VERSION = "0.4.0-M3";
     SE.DATA = SE.DATA || {};
     SE.DATA.nodes = SE.DATA.nodes || {};
     SE.DATA.strings = SE.DATA.strings || {};
@@ -37,6 +37,13 @@
                     break;
                 case "starmap":
                     SE.Starmap.open();
+                    break;
+                case "tech":
+                    SE.Tech.open();
+                    break;
+                case "resume":
+                    // 交談等暫離結束後,回到原本的敘事節點
+                    Core.goto(Core._returnNode || SE.DATA.start, { skipEnter: true });
                     break;
                 default:
                     console.warn("未知動作:", name);
@@ -77,8 +84,12 @@
             document.getElementById("btn-demo").addEventListener("click", () => Core.startDemo());
             document.getElementById("btn-char").addEventListener("click", () => SE.UI.openChar());
             document.getElementById("btn-map").addEventListener("click", () => { if (SE.State.data) SE.Starmap.open(); });
+            document.getElementById("btn-tech").addEventListener("click", () => { if (SE.State.data) SE.Tech.open(); });
+            document.getElementById("btn-party").addEventListener("click", () => { if (SE.State.data) SE.UI.openParty(); });
             document.getElementById("shop-tab-buy").addEventListener("click", () => { SE.Shop._tab = "buy"; SE.Shop.render(); });
             document.getElementById("shop-tab-sell").addEventListener("click", () => { SE.Shop._tab = "sell"; SE.Shop.render(); });
+            document.getElementById("tech-tab-tech").addEventListener("click", () => { SE.Tech._tab = "tech"; SE.Tech.render(); });
+            document.getElementById("tech-tab-craft").addEventListener("click", () => { SE.Tech._tab = "craft"; SE.Tech.render(); });
             document.getElementById("btn-continue").addEventListener("click", () => Core.loadGame("auto"));
             document.getElementById("btn-load").addEventListener("click", () => SE.UI.openSlots("load"));
             document.getElementById("btn-settings").addEventListener("click", () => SE.UI.openModal("modal-settings"));

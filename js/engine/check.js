@@ -28,7 +28,8 @@
             const die = Check.rollDie();
             const attrVal = (actor.attrs && actor.attrs[spec.attr]) || 5;
             const mod = Check.modOf(attrVal);
-            const skill = (spec.skill && actor.skills && actor.skills[spec.skill]) || 0;
+            let skill = (spec.skill && actor.skills && actor.skills[spec.skill]) || 0;
+            if (window.SE && SE.Tech && SE.State && SE.State.data) skill += SE.Tech.bonus("check_" + spec.attr);
             const total = die + mod + skill;
             let crit = null;
             if (die === 20) crit = "success";

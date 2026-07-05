@@ -84,6 +84,18 @@
                     <div id="cb-actions"></div>
                     <div id="cb-result"></div>
                 </div>
+
+                <!-- 艦船戰介面 -->
+                <div id="shipcombat" aria-label="艦船戰">
+                    <div id="sc-bands" class="sc-bands"></div>
+                    <div class="sc-ships-row">
+                        <div id="sc-player" class="sc-ship"></div>
+                        <div id="sc-enemy" class="sc-ship"></div>
+                    </div>
+                    <div id="sc-log" aria-live="polite"></div>
+                    <div id="sc-actions"></div>
+                    <div id="sc-result"></div>
+                </div>
             </main>
 
             <!-- 右欄:任務 / 所在地 / 快捷 -->
@@ -102,10 +114,9 @@
                     <div class="shortcut-grid">
                         <button class="icon-btn" type="button" id="btn-char">👤 角色/背包</button>
                         <button class="icon-btn" type="button" id="btn-map">🗺 星圖</button>
-                        <button class="icon-btn" type="button" disabled>🔬 科技</button>
-                        <button class="icon-btn" type="button" disabled>📜 日誌</button>
+                        <button class="icon-btn" type="button" id="btn-tech">🔬 科技/製造</button>
+                        <button class="icon-btn" type="button" id="btn-party">⚔ 小隊</button>
                     </div>
-                    <div class="loc-sub" style="margin-top:8px">灰色功能於 M3 開放</div>
                 </div>
             </aside>
         </div>
@@ -199,6 +210,37 @@
         </div>
     </div>
 
+    <!-- ============ 科技/製造 ============ -->
+    <div id="modal-tech" class="modal-backdrop" role="dialog" aria-modal="true">
+        <div class="modal">
+            <div class="modal-head">
+                <h2>科技與製造</h2>
+                <button class="icon-btn" type="button" data-close="modal-tech">✕ 關閉</button>
+            </div>
+            <div class="modal-body">
+                <div class="shop-bar">
+                    <span class="seg">
+                        <button class="icon-btn" type="button" id="tech-tab-tech">科技樹</button>
+                        <button class="icon-btn" type="button" id="tech-tab-craft">製造</button>
+                    </span>
+                    <span id="tech-cores" class="shop-credits"></span>
+                </div>
+                <div id="tech-list" class="slot-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ 小隊管理 ============ -->
+    <div id="modal-party" class="modal-backdrop" role="dialog" aria-modal="true">
+        <div class="modal">
+            <div class="modal-head">
+                <h2>小隊</h2>
+                <button class="icon-btn" type="button" data-close="modal-party">✕ 關閉</button>
+            </div>
+            <div class="modal-body" id="party-body"></div>
+        </div>
+    </div>
+
     <!-- ============ 角色面板 ============ -->
     <div id="modal-char" class="modal-backdrop" role="dialog" aria-modal="true">
         <div class="modal">
@@ -219,9 +261,11 @@
     <script src="js/engine/save.js"></script>
     <script src="js/engine/scene.js"></script>
     <script src="js/engine/combat.js"></script>
+    <script src="js/engine/shipCombat.js"></script>
     <script src="js/engine/create.js"></script>
     <script src="js/engine/starmap.js"></script>
     <script src="js/engine/shop.js"></script>
+    <script src="js/engine/tech.js"></script>
     <script src="js/engine/ui.js"></script>
     <script src="js/engine/core.js"></script>
     <!-- 內容資料 -->
@@ -229,9 +273,12 @@
     <script src="js/data/origins.js"></script>
     <script src="js/data/items.js"></script>
     <script src="js/data/enemies.js"></script>
+    <script src="js/data/techtree.js"></script>
+    <script src="js/data/ships.js"></script>
     <script src="js/data/companions.js"></script>
     <script src="js/data/prologue.js"></script>
     <script src="js/data/chapter1.js"></script>
+    <script src="js/data/chapter2.js"></script>
     <script src="js/data/demo.js"></script>
 </body>
 </html>

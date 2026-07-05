@@ -21,6 +21,11 @@
             SE.UI.openModal("modal-starmap");
         },
 
+        isLocked(id) {
+            const sys = SE.DATA.systems[id];
+            return !!(sys.locked && SE.State.data.unlocked.indexOf(id) === -1);
+        },
+
         render() {
             const s = SE.State.data;
             const cur = s.ship.system;
@@ -41,7 +46,7 @@
                     line.setAttribute("x1", sys.pos[0]); line.setAttribute("y1", sys.pos[1]);
                     line.setAttribute("x2", SE.DATA.systems[to].pos[0]); line.setAttribute("y2", SE.DATA.systems[to].pos[1]);
                     const active = (id === cur || to === cur) &&
-                        !SE.DATA.systems[id].locked && !SE.DATA.systems[to].locked;
+                        !Starmap.isLocked(id) && !Starmap.isLocked(to);
                     line.setAttribute("class", "sm-lane" + (active ? " active" : ""));
                     svg.appendChild(line);
                 });
@@ -52,14 +57,15 @@
                 const sys = SE.DATA.systems[id];
                 const g = document.createElementNS(NS, "g");
                 const isCur = id === cur;
+                const locked = Starmap.isLocked(id);
                 const adjacent = !!(curSys.lanes && curSys.lanes[id] != null);
                 const cost = adjacent ? curSys.lanes[id] : null;
-                const reachable = Starmap._canTravel && adjacent && !sys.locked && !isCur;
+                const reachable = Starmap._canTravel && adjacent && !locked && !isCur;
                 const affordable = reachable && s.ship.fuel >= cost;
 
                 g.setAttribute("class", "sm-node" +
                     (isCur ? " current" : "") +
-                    (sys.locked ? " locked" : "") +
+                    (locked ? " locked" : "") +
                     (affordable ? " reachable" : ""));
 
                 const c = document.createElementNS(NS, "circle");
@@ -69,14 +75,14 @@
 
                 const label = document.createElementNS(NS, "text");
                 label.setAttribute("x", sys.pos[0]); label.setAttribute("y", sys.pos[1] - 16);
-                label.textContent = (sys.locked ? "🔒" : "") + sys.name;
+                label.textContent = (locked ? "🔒" : "") + sys.name;
                 g.appendChild(label);
 
                 const sub = document.createElementNS(NS, "text");
                 sub.setAttribute("class", "sm-sub");
                 sub.setAttribute("x", sys.pos[0]); sub.setAttribute("y", sys.pos[1] + 24);
                 sub.textContent = isCur ? "目前位置" :
-                    sys.locked ? sys.blurb :
+                    locked ? sys.blurb :
                     adjacent ? "燃料 " + cost + ((Starmap._canTravel && s.ship.fuel < cost) ? "(不足)" : "") : "";
                 g.appendChild(sub);
 

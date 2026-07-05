@@ -32,6 +32,8 @@
                 quests: {},           // questId -> { stage, done }
                 chapter: 0,
                 ship: { fuel: 6, fuelMax: 10, hull: 30, hullMax: 30, system: "siren" },
+                tech: [],
+                unlocked: [],
                 location: opts.location || "siren_dawnport",
                 node: null,           // 目前敘事節點 id
                 playTime: 0           // 秒
@@ -46,7 +48,7 @@
         /** 派生數值(spec §4.1) */
         derive() {
             const p = State.data.player;
-            p.hpMax = 30 + p.attrs.STR * 6 + p.level * 4;
+            p.hpMax = 30 + p.attrs.STR * 6 + p.level * 4 + (SE.Tech ? SE.Tech.bonus("hp") : 0);
             p.epMax = 20 + p.attrs.WIL * 3;
             p.hp = Math.min(p.hp || p.hpMax, p.hpMax);
             p.ep = Math.min(p.ep || p.epMax, p.epMax);
@@ -189,14 +191,30 @@
                 if ("party" in e) {
                     const def = SE.DATA.companions[e.party];
                     if (!s.companions[e.party]) s.companions[e.party] = { affinity: 0, hp: def.hpMax, ep: def.epMax };
-                    if (s.party.indexOf(e.party) === -1) s.party.push(e.party);
-                    msgs.push((def ? def.name : e.party) + " " + (T.joined || "加入了小隊"));
+                    if (s.party.indexOf(e.party) === -1) {
+                        if (s.party.length < 2) {
+                            s.party.push(e.party);
+                            msgs.push((def ? def.name : e.party) + " " + (T.joined || "加入了小隊"));
+                        } else {
+                            msgs.push((def ? def.name : e.party) + " " + (T.joinedBench || "加入了船員(小隊已滿,可在「小隊」調度)"));
+                        }
+                    }
+                    continue;
+                }
+                if ("unlock" in e) {
+                    if (s.unlocked.indexOf(e.unlock) === -1) {
+                        s.unlocked.push(e.unlock);
+                        const sys = SE.DATA.systems && SE.DATA.systems[e.unlock];
+                        msgs.push((T.unlocked || "航道開通:") + (sys ? sys.name : e.unlock));
+                    }
                     continue;
                 }
                 if ("erosion" in e) {
-                    p.erosion = Math.max(0, Math.min(100, p.erosion + e.erosion));
-                    if (e.erosion > 0) msgs.push((T.erosionUp || "侵蝕 +") + e.erosion);
-                    else msgs.push((T.erosionDown || "侵蝕 ") + e.erosion);
+                    let amt = e.erosion;
+                    if (amt > 0 && SE.Tech) amt = Math.max(0, amt - SE.Tech.bonus("erosion_guard"));
+                    p.erosion = Math.max(0, Math.min(100, p.erosion + amt));
+                    if (amt > 0) msgs.push((T.erosionUp || "侵蝕 +") + amt);
+                    else if (amt < 0) msgs.push((T.erosionDown || "侵蝕 ") + amt);
                     continue;
                 }
                 if ("hp" in e) { p.hp = Math.max(0, Math.min(p.hpMax, p.hp + e.hp)); continue; }

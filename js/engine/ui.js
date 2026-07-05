@@ -235,6 +235,68 @@
             });
         },
 
+        /* ---------- 小隊管理 ---------- */
+        AFFINITY_LV: ["冷淡", "中立", "信任", "摯友", "羈絆"],
+        affinityLevel(v) { return Math.max(0, Math.min(4, Math.floor((v || 0) / 2))); },
+
+        openParty() {
+            UI.renderParty();
+            UI.openModal("modal-party");
+        },
+
+        renderParty() {
+            const s = SE.State.data;
+            const body = document.getElementById("party-body");
+            const roster = Object.keys(s.companions).filter(id => SE.DATA.companions[id]);
+            let html = '<div class="modal-note">出戰小隊上限 2 人;其餘船員留守迴響號提供被動加成。點擊切換出戰/待命。</div>';
+
+            if (!roster.length) {
+                html += '<div class="modal-note">目前沒有夥伴。</div>';
+                body.innerHTML = html;
+                return;
+            }
+            html += '<div class="party-list">';
+            roster.forEach(function (id) {
+                const def = SE.DATA.companions[id];
+                const rec = s.companions[id];
+                const active = s.party.indexOf(id) !== -1;
+                const lv = UI.affinityLevel(rec.affinity);
+                html += '<div class="party-card' + (active ? " active" : "") + '">' +
+                    '<div class="pc-head"><b>' + def.name + '</b><span class="cls">' + def.title + "</span></div>" +
+                    '<div class="pc-aff">好感:' + UI.AFFINITY_LV[lv] +
+                    ' <span class="pc-aff-dots">' + "●".repeat(lv + 1) + "○".repeat(4 - lv) + "</span></div>" +
+                    '<div class="pc-passive label">' + def.shipPassive + "</div>" +
+                    '<div class="pc-actions">' +
+                    '<button class="icon-btn" type="button" data-toggle="' + id + '">' +
+                    (active ? "◂ 調回待命" : "▸ 加入出戰") + "</button>";
+                if (SE.DATA.nodes["talk_" + id]) {
+                    html += '<button class="icon-btn" type="button" data-talk="' + id + '">💬 交談</button>';
+                }
+                html += "</div></div>";
+            });
+            html += "</div>";
+            body.innerHTML = html;
+
+            body.querySelectorAll("[data-toggle]").forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    const id = btn.getAttribute("data-toggle");
+                    const idx = s.party.indexOf(id);
+                    if (idx !== -1) s.party.splice(idx, 1);
+                    else if (s.party.length < 2) s.party.push(id);
+                    else UI.toast("出戰小隊已滿(上限 2 人)", true);
+                    UI.renderParty(); UI.refreshHUD();
+                });
+            });
+            body.querySelectorAll("[data-talk]").forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    const id = btn.getAttribute("data-talk");
+                    UI.closeModal("modal-party");
+                    SE.Core._returnNode = SE.State.data.node;
+                    SE.Core.goto("talk_" + id, { noAutosave: true });
+                });
+            });
+        },
+
         /* ---------- 設定 ---------- */
         applySettings() {
             const st = SE.settings;

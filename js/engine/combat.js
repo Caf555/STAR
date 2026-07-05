@@ -159,7 +159,12 @@
 
         dealDamage(atk, target, opt) {
             let dmg = rnd(opt.base[0], opt.base[1]) + (opt.flatMod || 0);
+            if (atk && atk.side === "ally" && SE.Tech) {
+                dmg += SE.Tech.bonus("dmg");
+                if (opt.dtype === "psi") dmg += SE.Tech.bonus("psi");
+            }
             dmg = Math.round(dmg * (opt.mult || 1) * Combat.resistOf(target, opt.dtype));
+            if (target.side === "ally" && SE.Tech) dmg = Math.max(0, dmg - SE.Tech.bonus("armor"));
             if (target.defending) dmg = Math.round(dmg * 0.5);
             const shield = target.statuses.find(s => s.id === "shield");
             if (shield) {
@@ -249,6 +254,10 @@
             if (it.combat.heal) {
                 target.hp = Math.min(target.hpMax, target.hp + it.combat.heal);
                 Combat.log(actor.name + " 對 " + target.name + " 使用【" + it.name + "】,恢復 " + it.combat.heal + " 點生命", "good");
+            } else if (it.combat.dmg) {
+                const dmg = Combat.dealDamage(actor, target, { base: it.combat.dmg, dtype: it.combat.dtype || "kin" });
+                Combat.log(actor.name + " 對 " + target.name + " 投擲【" + it.name + "】,造成 " + dmg + " 點傷害", "good");
+                if (target.hp <= 0) Combat.log(target.name + " 倒下了!", "good");
             }
             Combat.render(); Combat.after();
         },
@@ -447,7 +456,7 @@
                 const it = SE.DATA.items[itemId];
                 if (it && it.combat) {
                     mk("▣ " + it.name + " ×" + SE.State.itemQty(itemId), function () {
-                        Combat._mode = { kind: "item", data: itemId, targetSide: "ally", range: null };
+                        Combat._mode = { kind: "item", data: itemId, targetSide: it.combat.dmg ? "enemy" : "ally", range: null };
                         Combat.render();
                     });
                 }

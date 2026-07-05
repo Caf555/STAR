@@ -43,6 +43,13 @@
             resist: { kin: 1, en: 1, psi: 0.5 },
             xp: 25, credits: 15
         },
+        zealot_adept: {
+            name: "燃燈庭執誦者", family: "human",
+            hp: 34, agi: 7, atk: [6, 9], dtype: "psi", range: "ranged",
+            resist: { kin: 1, en: 1, psi: 0.5 },
+            skills: [{ name: "低語灌注", dmg: [5, 8], dtype: "psi", status: { id: "stun", turns: 1, chance: 0.3 } }],
+            xp: 45, credits: 30
+        },
         rift_spawn: {
             name: "裂隙幼體", family: "rift",
             hp: 22, agi: 8, atk: [4, 7], dtype: "psi", range: "melee",

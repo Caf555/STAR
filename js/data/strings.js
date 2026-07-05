@@ -7,7 +7,7 @@
     SE.DATA = SE.DATA || {};
 
     SE.DATA.strings = {
-        engineTag: "M2 星圖與第一章",
+        engineTag: "M3 系統完備與第二章",
         demoChapter: "示範場景〈曙光港的訊號〉",
         noQuest: "(目前沒有追蹤中的任務)",
 
@@ -40,7 +40,9 @@
             erosionDown: "侵蝕 ",
             affinity: "好感",
             levelUp: "升級!Lv.",
-            joined: "加入了小隊"
+            joined: "加入了小隊",
+            joinedBench: "加入了船員(小隊已滿,可在「小隊」調度)",
+            unlocked: "航道開通:"
         }
     };
 })();

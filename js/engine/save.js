@@ -8,7 +8,7 @@
 
     const PREFIX = "se_save_";
     const SLOTS = 5;
-    const VERSION = 2;
+    const VERSION = 3;
 
     /* 版本遷移鏈:migrations[n] 將版本 n 的存檔升級為 n+1 */
     const migrations = {
@@ -25,6 +25,15 @@
                 save.state.ship = { fuel: 6, fuelMax: 10, hull: 30, hullMax: 30, system: "siren" };
             }
             save.version = 2;
+            return save;
+        },
+        2: function (save) {
+            // v2(M2)→ v3(M3):補上科技樹與航道解鎖
+            if (save.state) {
+                if (!save.state.tech) save.state.tech = [];
+                if (!save.state.unlocked) save.state.unlocked = [];
+            }
+            save.version = 3;
             return save;
         }
     };

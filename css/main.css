@@ -358,6 +358,50 @@ html[data-fx="on"] #starfield::after {
 .shop-credits { color: var(--accent-orange); font-variant-numeric: tabular-nums; font-size: .9em; }
 .shop-price { color: var(--accent-orange); font-variant-numeric: tabular-nums; min-width: 4ch; text-align: right; }
 
+/* ============ 艦船戰 ============ */
+#shipcombat {
+    position: absolute; inset: 0; z-index: 10; display: none;
+    flex-direction: column; gap: 10px; padding: 16px clamp(12px, 4vw, 48px);
+    background: #080a0e;
+}
+#shipcombat.open { display: flex; }
+.sc-bands { display: flex; gap: 8px; }
+.sc-band {
+    flex: 1; text-align: center; padding: 10px 4px; font-size: .82em;
+    border: 1px solid var(--border-color); background: var(--bg-panel); color: var(--text-dim);
+    letter-spacing: .2em;
+}
+.sc-band.on { border-color: var(--accent-cyan); color: var(--accent-cyan); background: rgba(57,208,216,.08); }
+.sc-ships { font-size: 1.1em; margin-top: 6px; letter-spacing: .1em; }
+.sc-ships-row { display: flex; gap: 12px; }
+.sc-ship {
+    flex: 1; background: var(--bg-panel); border: 1px solid var(--border-color); padding: 12px 14px;
+}
+.sc-ship .cb-name { font-size: 1em; margin-bottom: 8px; }
+.sc-ship .bar { margin: 4px 0 6px; }
+#sc-log {
+    flex: 1; min-height: 60px; overflow-y: auto;
+    border: 1px solid var(--border-color); background: rgba(15,17,21,.8);
+    padding: 8px 12px; font-size: .84em; line-height: 1.75;
+}
+#sc-actions { display: flex; gap: 8px; flex-wrap: wrap; min-height: 38px; align-items: center; }
+#sc-result { display: none; text-align: center; padding: 10px 0 4px; }
+#sc-result .menu-btn { display: inline-block; width: auto; padding: 10px 40px; }
+
+/* ============ 小隊管理 ============ */
+.party-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.party-card {
+    border: 1px solid var(--border-color); background: var(--bg-panel-2); padding: 12px 14px;
+}
+.party-card.active { border-color: var(--accent-cyan); box-shadow: inset 3px 0 0 var(--accent-cyan); }
+.pc-head { display: flex; align-items: baseline; gap: 8px; }
+.pc-head .cls { color: var(--text-dim); font-size: .78em; }
+.pc-aff { font-size: .84em; margin: 6px 0; color: var(--text-secondary); }
+.pc-aff-dots { color: var(--accent-orange); letter-spacing: .1em; margin-left: 4px; }
+.pc-passive { font-size: .8em; margin-bottom: 8px; }
+.pc-actions { display: flex; gap: 8px; }
+.tech-owned { opacity: .65; }
+
 /* ============ 角色面板 ============ */
 .char-h { font-size: .78em; color: var(--accent-cyan); letter-spacing: .25em; margin: 18px 0 8px; display: flex; justify-content: space-between; align-items: center; }
 .char-attrs { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
