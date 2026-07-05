@@ -108,6 +108,24 @@
             skills: [{ name: "存在剝離", dmg: [7, 10], dtype: "psi", status: { id: "burn", turns: 2, power: 5 } }],
             xp: 130, credits: 0,
             loot: [{ item: "void_shard", qty: 1, chance: 1 }]
+        },
+
+        /* ---- 終章:噬淵化身 ---- */
+        abyss_tendril: {
+            name: "噬淵觸鬚", family: "rift",
+            hp: 22, agi: 8, atk: [6, 9], dtype: "psi", range: "melee",
+            resist: { kin: 0.9, en: 0.9, psi: 1.25 },
+            xp: 60, credits: 0
+        },
+        abyss_avatar: {
+            name: "噬淵化身", family: "rift",
+            hp: 110, agi: 7, atk: [8, 11], dtype: "psi", range: "ranged",
+            resist: { kin: 0.9, en: 0.9, psi: 1.25 },
+            skills: [
+                { name: "萬聲齊喑", dmg: [7, 10], dtype: "psi", status: { id: "suppress", turns: 1 } }
+            ],
+            xp: 500, credits: 0,
+            loot: [{ item: "void_shard", qty: 3, chance: 1 }]
         }
     });
 })();

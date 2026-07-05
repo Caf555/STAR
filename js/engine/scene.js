@@ -47,7 +47,10 @@
                 box.appendChild(div.firstChild);
             }
 
-            const paras = String(n.text || "").split(/\n\s*\n/).map(Scene.markup);
+            let raw = String(n.text || "");
+            // 動態文字:節點可指定 dyn 建構器(如尾聲後日談),依當前狀態組裝
+            if (n.dyn && SE.Dyn && SE.Dyn[n.dyn]) raw += SE.Dyn[n.dyn]();
+            const paras = raw.split(/\n\s*\n/).map(Scene.markup);
             Scene.renderChoices(null); // 打字期間先清空選項
             Scene.typewrite(box, paras, function () {
                 Scene.renderChoices(n);

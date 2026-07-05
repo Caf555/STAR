@@ -151,6 +151,7 @@
                 (lines.length ? '<div class="cb-result-lines">' + lines.join("<br>") + "</div>" : "") +
                 '<button class="menu-btn" type="button" id="sc-continue">▸ 繼續</button>';
             document.getElementById("sc-actions").innerHTML = "";
+            res.scrollIntoView({ block: "nearest" });
             document.getElementById("sc-continue").addEventListener("click", function () {
                 document.getElementById("shipcombat").classList.remove("open");
                 ShipCombat.cur = null;

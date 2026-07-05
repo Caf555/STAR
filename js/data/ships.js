@@ -27,6 +27,12 @@
             enemy: { name: "守夜人封鎖節點", hull: 52, hullMax: 52, shieldMax: 14, dmg: [7, 10], band: 1, xp: 140, credits: 0 },
             escapable: false,
             victory: "ch3_barrier_win", defeat: "ch3_barrier_lose"
+        },
+        se_final_barrier: {
+            title: "弦心空間屏障・守衛",
+            enemy: { name: "屏障守衛巨艦", hull: 55, hullMax: 55, shieldMax: 12, dmg: [7, 10], band: 1, xp: 200, credits: 0 },
+            escapable: false,
+            victory: "ch5_02", defeat: "ch5_barrier_retry"
         }
     };
 })();

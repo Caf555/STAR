@@ -16,7 +16,7 @@
         },
         helios: {
             name: "赫利俄斯星系", sub: "星區樞紐・燈塔站",
-            pos: [300, 225], lanes: { siren: 2, newcanaan: 2, ironcrown: 2, hymn: 3, mist: 3, mutering: 3 },
+            pos: [300, 225], lanes: { siren: 2, newcanaan: 2, ironcrown: 2, hymn: 3, mist: 3, mutering: 3, chordheart: 4 },
             arrive: "arrive_helios"
         },
         newcanaan: {
@@ -45,9 +45,9 @@
             locked: true, arrive: "arrive_mutering", blurb: "未知訊號干擾,座標不完整(第三章開放)"
         },
         chordheart: {
-            name: "弦心星系", sub: "???",
-            pos: [590, 185], lanes: {},
-            locked: true, blurb: "空間屏障。任何已知航道都無法抵達。"
+            name: "弦心星系", sub: "弦網中樞",
+            pos: [590, 185], lanes: { helios: 4 },
+            locked: true, arrive: "arrive_chordheart", blurb: "空間屏障。裂隙撕開了一道缺口(第五章)。"
         }
     };
 

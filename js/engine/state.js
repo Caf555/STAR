@@ -265,6 +265,15 @@
                     msgs.push(T.repaired || "船體已修復");
                     continue;
                 }
+                if ("healParty" in e) {
+                    p.hp = p.hpMax; p.ep = p.epMax;
+                    s.party.forEach(function (id) {
+                        const def = SE.DATA.companions[id], rec = s.companions[id];
+                        if (def && rec) { rec.hp = def.hpMax; rec.ep = def.epMax; }
+                    });
+                    msgs.push(T.healed || "小隊已恢復");
+                    continue;
+                }
                 if ("quest" in e) {
                     const q = s.quests[e.quest] || (s.quests[e.quest] = { stage: 0, done: false });
                     if (e.op === "start") q.stage = Math.max(q.stage, 1);
