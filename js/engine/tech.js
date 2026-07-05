@@ -53,9 +53,18 @@
         craft(rid) {
             const r = SE.DATA.recipes[rid];
             if (!r || !Tech.canCraft(r)) return false;
-            Object.keys(r.mats).forEach(m => SE.State.addItem(m, -r.mats[m]));
+            const mats = Object.keys(r.mats);
+            mats.forEach(m => SE.State.addItem(m, -r.mats[m]));
+
+            if (SE.State.benched("elena") && Math.random() < 0.2) {   // 伊蓮娜留守:逆向工程材料回收
+                const refund = mats[Math.floor(Math.random() * mats.length)];
+                SE.State.addItem(refund, 1);
+                if (SE.UI) SE.UI.toast("逆向工程:回收了 " + SE.DATA.items[refund].name);
+            }
+
             let qty = r.qty || 1;
-            if (SE.State.data.player.attrs.INT >= 10 && Math.random() < 0.2) {
+            const doubleChance = (SE.State.data.player.attrs.INT >= 10 ? 0.2 : 0) + (SE.State.benched("rivet") ? 0.15 : 0);
+            if (doubleChance > 0 && Math.random() < doubleChance) {
                 qty *= 2;
                 if (SE.UI) SE.UI.toast("精工!產出加倍");
             }

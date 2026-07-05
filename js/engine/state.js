@@ -54,6 +54,23 @@
             p.ep = Math.min(p.ep || p.epMax, p.epMax);
         },
 
+        /**
+         * 夥伴生命上限(隨玩家等級同步成長,+4/級,與玩家 hpMax 的等級項一致)。
+         * 夥伴的基礎數值是靜態資料,若不隨等級調整,後期章節會遠遠落後玩家與敵人強度。
+         */
+        companionHpMax(id) {
+            const def = SE.DATA.companions[id];
+            if (!def) return 0;
+            const lvl = (State.data && State.data.player && State.data.player.level) || 1;
+            return def.hpMax + (lvl - 1) * 4;
+        },
+
+        /** 是否已招募但「留守艦上」(未在 2 人出戰小隊中)——艦上待命被動的生效條件 */
+        benched(id) {
+            const s = State.data;
+            return !!(s && s.companions[id] && s.party.indexOf(id) === -1);
+        },
+
         /* ---------- 旗標(點路徑) ---------- */
         setFlag(path, val) {
             const parts = String(path).replace(/^flag\./, "").split(".");
@@ -167,6 +184,7 @@
                     const q = e.qty == null ? 1 : e.qty;
                     State.addItem(e.item, q);
                     msgs.push((q > 0 ? (T.gain || "獲得:") : (T.lose || "失去:")) + itemName(e.item) + (Math.abs(q) > 1 ? " ×" + Math.abs(q) : ""));
+                    if (q > 0 && SE.Audio) SE.Audio.play("pickup");
                     continue;
                 }
                 if ("credits" in e) {
@@ -185,12 +203,13 @@
                         State.derive();
                         p.hp = p.hpMax; p.ep = p.epMax;
                         msgs.push((T.levelUp || "升級!Lv.") + p.level);
+                        if (SE.Audio) SE.Audio.play("levelUp");
                     }
                     continue;
                 }
                 if ("party" in e) {
                     const def = SE.DATA.companions[e.party];
-                    if (!s.companions[e.party]) s.companions[e.party] = { affinity: 0, hp: def.hpMax, ep: def.epMax };
+                    if (!s.companions[e.party]) s.companions[e.party] = { affinity: 0, hp: State.companionHpMax(e.party), ep: def.epMax };
                     if (s.party.indexOf(e.party) === -1) {
                         if (s.party.length < 2) {
                             s.party.push(e.party);
@@ -214,14 +233,16 @@
                         s.unlocked.push(e.unlock);
                         const sys = SE.DATA.systems && SE.DATA.systems[e.unlock];
                         msgs.push((T.unlocked || "航道開通:") + (sys ? sys.name : e.unlock));
+                        if (SE.Audio) SE.Audio.play("unlock");
                     }
                     continue;
                 }
                 if ("erosion" in e) {
                     let amt = e.erosion;
                     if (amt > 0 && SE.Tech) amt = Math.max(0, amt - SE.Tech.bonus("erosion_guard"));
+                    if (amt > 0 && State.benched("echo")) amt += 1;   // 回聲留守:淵之低語的代價——船員侵蝕緩增
                     p.erosion = Math.max(0, Math.min(100, p.erosion + amt));
-                    if (amt > 0) msgs.push((T.erosionUp || "侵蝕 +") + amt);
+                    if (amt > 0) { msgs.push((T.erosionUp || "侵蝕 +") + amt); if (SE.Audio) SE.Audio.play("erosion"); }
                     else if (amt < 0) msgs.push((T.erosionDown || "侵蝕 ") + amt);
                     continue;
                 }
@@ -269,7 +290,7 @@
                     p.hp = p.hpMax; p.ep = p.epMax;
                     s.party.forEach(function (id) {
                         const def = SE.DATA.companions[id], rec = s.companions[id];
-                        if (def && rec) { rec.hp = def.hpMax; rec.ep = def.epMax; }
+                        if (def && rec) { rec.hp = State.companionHpMax(id); rec.ep = def.epMax; }
                     });
                     msgs.push(T.healed || "小隊已恢復");
                     continue;
@@ -278,7 +299,7 @@
                     const q = s.quests[e.quest] || (s.quests[e.quest] = { stage: 0, done: false });
                     if (e.op === "start") q.stage = Math.max(q.stage, 1);
                     else if (e.op === "advance") q.stage += 1;
-                    else if (e.op === "complete") q.done = true;
+                    else if (e.op === "complete") { q.done = true; if (SE.Audio) SE.Audio.play("questComplete"); }
                     continue;
                 }
             }

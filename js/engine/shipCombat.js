@@ -37,6 +37,7 @@
             document.getElementById("sc-result").style.display = "none";
             document.getElementById("sc-log").innerHTML = "";
             ShipCombat.log("⚓ " + (enc.title || "艦船遭遇") + "!", "sys");
+            if (SE.Audio) SE.Audio.enterCombatMood();
             ShipCombat.render();
         },
 
@@ -58,6 +59,7 @@
             } else {
                 target.hull = Math.max(0, target.hull - hullDmg);
             }
+            if (SE.Audio) SE.Audio.play(isPlayer ? "shipHit" : "hit_en");
             return { absorbed: absorbed, hull: hullDmg };
         },
 
@@ -71,6 +73,7 @@
                 if (c.player.cds[w.id] > 0 || w.bands.indexOf(c.band) === -1) return;
                 c.ap--;
                 if (w.cd) c.player.cds[w.id] = w.cd + 1;
+                if (SE.Audio) SE.Audio.play("shipFire");
                 const dmg = rnd(w.dmg[0], w.dmg[1]) + w.bonus;
                 const r = ShipCombat.damageShip(c.enemy, dmg, false);
                 ShipCombat.log("迴響號【" + w.name + "】命中 " + c.enemy.name + ":護盾 −" + r.absorbed + "、船體 −" + r.hull, "good");
@@ -136,6 +139,7 @@
             const c = ShipCombat.cur;
             c.over = true;
             const victory = result === true;
+            if (SE.Audio) { SE.Audio.play(victory ? "victory" : "defeat"); SE.Audio.exitCombatMood(); }
             const lines = [];
             if (victory) {
                 const msgs = SE.State.apply([{ xp: c.enemy.xp || 0 }, { credits: c.enemy.credits || 0 }]);

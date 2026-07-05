@@ -158,6 +158,7 @@
                 const r = SE.Check.roll(c.check, SE.State.data.player);
                 const banner = SE.Check.bannerHTML(r);
                 const target = r.success ? c.check.success : c.check.fail;
+                if (SE.Audio) SE.Audio.play(r.crit === "success" ? "critSuccess" : r.crit === "fail" ? "critFail" : (r.success ? "checkOk" : "checkFail"));
                 SE.Core.goto(target, { banner: banner });
                 return;
             }

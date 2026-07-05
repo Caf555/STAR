@@ -102,10 +102,11 @@
             const s = SE.State.data;
             const cost = SE.DATA.systems[s.ship.system].lanes[toId];
             if (s.ship.fuel < cost) return;
-            s.ship.fuel -= cost;
+            const saved = SE.State.benched("thane") && Math.random() < 0.25;   // 塞恩留守:領航直覺
+            if (!saved) s.ship.fuel -= cost;
             s.ship.system = toId;
             SE.UI.closeModal("modal-starmap");
-            SE.UI.toast("躍遷完成:" + SE.DATA.systems[toId].name + "(燃料 −" + cost + ")");
+            SE.UI.toast("躍遷完成:" + SE.DATA.systems[toId].name + (saved ? "(領航直覺:燃料未消耗!)" : "(燃料 −" + cost + ")"));
             SE.Core.goto(SE.DATA.systems[toId].arrive);
         }
     };
