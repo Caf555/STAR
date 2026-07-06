@@ -319,8 +319,10 @@
                 const cur = String(st[key]);
                 btn.classList.toggle("on", cur === val);
             });
-            const vol = document.getElementById("setting-volume");
-            if (vol) vol.value = Math.round((st.volume != null ? st.volume : 0.6) * 100);
+            const mv = document.getElementById("setting-musicvol");
+            if (mv) mv.value = Math.round((st.musicVol != null ? st.musicVol : 0.5) * 100);
+            const sv = document.getElementById("setting-sfxvol");
+            if (sv) sv.value = Math.round((st.sfxVol != null ? st.sfxVol : 0.8) * 100);
         },
 
         bindSettings() {
@@ -338,15 +340,17 @@
                     UI.applySettings();
                 });
             });
-            const vol = document.getElementById("setting-volume");
-            if (vol) {
-                vol.addEventListener("input", function () {
-                    const v = parseInt(vol.value, 10) / 100;
-                    SE.settings.volume = v;
+            const bindVol = function (elId, fn) {
+                const el = document.getElementById(elId);
+                if (!el) return;
+                el.addEventListener("input", function () {
+                    const v = parseInt(el.value, 10) / 100;
+                    if (SE.Audio) fn(v);
                     localStorage.setItem("se_settings", JSON.stringify(SE.settings));
-                    if (SE.Audio) SE.Audio.setVolume(v);
                 });
-            }
+            };
+            bindVol("setting-musicvol", v => SE.Audio.setMusicVol(v));
+            bindVol("setting-sfxvol", v => SE.Audio.setSfxVol(v));
         },
 
         /* ---------- 鍵盤 ---------- */

@@ -198,7 +198,7 @@
             });
             SE.State.apply([{ item: "stim_patch", qty: 2 }, { item: c.weapon, qty: 1 }]);
             SE.UI.showScreen("game");
-            if (SE.Audio) SE.Audio.startAmbient("explore");
+            if (SE.Audio) SE.Audio.updateMood();
             SE.Core.goto(o.start);
         }
     };

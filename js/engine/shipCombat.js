@@ -37,7 +37,7 @@
             document.getElementById("sc-result").style.display = "none";
             document.getElementById("sc-log").innerHTML = "";
             ShipCombat.log("⚓ " + (enc.title || "艦船遭遇") + "!", "sys");
-            if (SE.Audio) SE.Audio.enterCombatMood();
+            if (SE.Audio) SE.Audio.enterCombatMood("ship");
             ShipCombat.render();
         },
 

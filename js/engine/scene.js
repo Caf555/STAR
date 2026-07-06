@@ -57,6 +57,9 @@
             });
 
             SE.UI.refreshHUD();
+            // 依所在地/劇情狀態切換情境音樂(戰鬥覆蓋層開啟時不搶戰鬥配樂)
+            if (SE.Audio && !document.getElementById("combat").classList.contains("open") &&
+                !document.getElementById("shipcombat").classList.contains("open")) SE.Audio.updateMood();
             if (!opts.noAutosave) SE.Save.save("auto");
         },
 
