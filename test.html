@@ -471,18 +471,23 @@
     const epi = SE.Dyn.epilogue();
     t("尾聲:含結局基調與夥伴後日談", epi.indexOf("新紀元") !== -1 && epi.indexOf("凱菈") !== -1);
 
-    /* ---------- 音效系統(Web Audio 即時合成) ---------- */
+    /* ---------- 音效與生成式配樂(Web Audio 即時合成) ---------- */
     t("SE.Audio 模組已註冊", typeof SE.Audio === "object");
-    window.SE.settings = window.SE.settings || { sfxOn: true, musicOn: true, volume: 0.6 };
+    window.SE.settings = window.SE.settings || { sfxOn: true, musicOn: true, musicVol: 0.5, sfxVol: 0.8 };
     let audioErr = null;
     try {
         SE.Audio.resume();
         Object.keys(SE.Audio._sfx).forEach(name => SE.Audio.play(name));
-        SE.Audio.startAmbient("menu");
-        SE.Audio.startAmbient("explore");
+        // 逐一啟動每種情境配樂並排程一次(驗證樂譜規格與排程器無例外)
+        Object.keys(SE.Audio.MOODS).forEach(function (m) {
+            SE.Audio.startAmbient(m);
+            if (SE.Audio._run) SE.Audio._scheduleStep(SE.Audio._run, SE.Audio.ctx.currentTime + 0.01);
+        });
         SE.Audio.enterCombatMood();
+        SE.Audio.enterCombatMood("ship");
         SE.Audio.exitCombatMood();
-        SE.Audio.setVolume(0.3);
+        SE.Audio.setMusicVol(0.3);
+        SE.Audio.setSfxVol(0.4);
         SE.Audio.setSfxOn(false);
         SE.Audio.play("click");   // 靜音狀態下呼叫仍不得拋錯
         SE.Audio.setSfxOn(true);
@@ -492,7 +497,25 @@
     } catch (e) { audioErr = e; }
     t("全部 SFX 皆可播放且無例外(" + Object.keys(SE.Audio._sfx).length + " 種)", audioErr === null);
     if (audioErr) out.insertAdjacentHTML("beforeend", '<div class="ng">' + audioErr.message + "</div>");
-    t("靜音時 play() 不拋錯、音量正確反映設定", SE.settings.volume === 0.3);
+    t("七種情境配樂皆有樂譜規格", Object.keys(SE.Audio.MOODS).length === 7 &&
+        ["menu", "explore", "hub", "combat", "shipcombat", "cataclysm", "finale"].every(m => !!SE.Audio.MOODS[m]));
+    t("音樂/音效音量分離且靜音不拋錯", SE.settings.musicVol === 0.3 && SE.settings.sfxVol === 0.4);
+
+    // 情境判定:依所在地與旗標選對配樂
+    SE.State.create({ name: "測" });
+    SE.State.data.location = "helios_lighthouse";
+    t("情境判定:燈塔站 → hub", SE.Audio.sceneMood() === "hub");
+    SE.State.data.location = "siren_dawnport";
+    t("情境判定:一般地點 → explore", SE.Audio.sceneMood() === "explore");
+    SE.State.setFlag("world.cataclysm", true);
+    t("情境判定:災變旗標 → cataclysm", SE.Audio.sceneMood() === "cataclysm");
+    SE.State.data.location = "chordheart_city";
+    t("情境判定:弦心 → finale", SE.Audio.sceneMood() === "finale");
+    SE.State.setFlag("world.cataclysm", false);
+    // 樂理:degMidi 落在音階內
+    const spec = SE.Audio.MOODS.explore;
+    t("樂理:degMidi 計算音高在合理範圍", SE.Audio.degMidi(spec, 0, 0) === spec.root &&
+        SE.Audio.degMidi(spec, 7, 0) === spec.root + 12);
 
     /* ---------- 內容 lint:示範場景無斷鏈 ---------- */
     let broken = [];

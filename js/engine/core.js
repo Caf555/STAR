@@ -14,7 +14,7 @@
     SE.DATA.locations = SE.DATA.locations || {};
 
     /* 玩家偏好(與存檔分離,獨立保存) */
-    const SETTINGS_DEFAULT = { typewriter: true, fontSize: "md", fx: true, sfxOn: true, musicOn: true, volume: 0.6 };
+    const SETTINGS_DEFAULT = { typewriter: true, fontSize: "md", fx: true, sfxOn: true, musicOn: true, musicVol: 0.5, sfxVol: 0.8 };
     SE.settings = (function () {
         try { return Object.assign({}, SETTINGS_DEFAULT, JSON.parse(localStorage.getItem("se_settings") || "{}")); }
         catch (e) { return Object.assign({}, SETTINGS_DEFAULT); }
@@ -61,7 +61,7 @@
             SE.State.create({ name: "旅人" });
             SE.State.apply([{ item: "pistol_em", qty: 1 }]);
             SE.UI.showScreen("game");
-            if (SE.Audio) SE.Audio.startAmbient("explore");
+            if (SE.Audio) SE.Audio.updateMood();
             Core.goto("demo_01");
         },
 
@@ -70,7 +70,7 @@
             if (!save) { SE.UI.toast(SE.DATA.strings.loadFail || "讀檔失敗", true); return; }
             SE.UI.closeAllModals();
             SE.UI.showScreen("game");
-            if (SE.Audio) SE.Audio.startAmbient("explore");
+            if (SE.Audio) SE.Audio.updateMood();
             Core.goto(save.node || SE.DATA.start, { skipEnter: true, noAutosave: slot === "auto" });
         },
 
@@ -128,7 +128,7 @@
                     SE.Save.save("auto");
                     SE.UI.closeAllModals();
                     SE.UI.showScreen("game");
-                    if (SE.Audio) SE.Audio.startAmbient("explore");
+                    if (SE.Audio) SE.Audio.updateMood();
                     Core.goto(save.node || SE.DATA.start, { skipEnter: true });
                 });
                 ev.target.value = "";
