@@ -20,7 +20,8 @@
 - **四種結局**,依你全程的抉擇與羈絆決定
 - 完整音效與氛圍音樂(Web Audio 即時合成,零音檔)
 
-完整設計文件見 [`GAME_SPEC.md`](./GAME_SPEC.md)。
+完整設計文件見 [`GAME_SPEC.md`](./GAME_SPEC.md);
+最終實作規格與開發踩坑實錄(供其他網頁遊戲開發參考)見 [`DEV_REFERENCE.md`](./DEV_REFERENCE.md)。
 
 ## 怎麼玩
 
